@@ -388,7 +388,10 @@
     "Showing the first matches. Refine your search for more specific results.": "Showing the first matches. Refine your search for more specific results.",
     "No matching records": "No matching records",
     "Try another word, name, email address, or phone number.": "Try another word, name, email address, or phone number.",
-    "Open matching record": "Open matching record"
+    "Open matching record": "Open matching record",
+    "Task history": "Task history",
+    "Created": "Created",
+    "Creation date unavailable": "Creation date unavailable"
   },
   "he": {
     "Today": "היום",
@@ -779,7 +782,10 @@
     "Showing the first matches. Refine your search for more specific results.": "מוצגות ההתאמות הראשונות. צמצמו את החיפוש לקבלת תוצאות ממוקדות יותר.",
     "No matching records": "לא נמצאו רשומות מתאימות",
     "Try another word, name, email address, or phone number.": "נסו מילה, שם, כתובת דוא״ל או מספר טלפון אחרים.",
-    "Open matching record": "פתיחת הרשומה המתאימה"
+    "Open matching record": "פתיחת הרשומה המתאימה",
+    "Task history": "היסטוריית משימה",
+    "Created": "נוצרה",
+    "Creation date unavailable": "תאריך היצירה אינו זמין"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -1170,7 +1176,10 @@
     "Showing the first matches. Refine your search for more specific results.": "Affichage des premières correspondances. Précisez votre recherche pour des résultats plus ciblés.",
     "No matching records": "Aucun élément correspondant",
     "Try another word, name, email address, or phone number.": "Essayez un autre mot, nom, e-mail ou numéro de téléphone.",
-    "Open matching record": "Ouvrir l’élément correspondant"
+    "Open matching record": "Ouvrir l’élément correspondant",
+    "Task history": "Historique de la tâche",
+    "Created": "Créée",
+    "Creation date unavailable": "Date de création indisponible"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1561,7 +1570,10 @@
     "Showing the first matches. Refine your search for more specific results.": "Показаны первые совпадения. Уточните запрос для более точных результатов.",
     "No matching records": "Совпадений не найдено",
     "Try another word, name, email address, or phone number.": "Попробуйте другое слово, имя, адрес почты или номер телефона.",
-    "Open matching record": "Открыть найденную запись"
+    "Open matching record": "Открыть найденную запись",
+    "Task history": "История задачи",
+    "Created": "Создана",
+    "Creation date unavailable": "Дата создания недоступна"
   },
   "es": {
     "Today": "Hoy",
@@ -1952,6 +1964,9 @@
     "Showing the first matches. Refine your search for more specific results.": "Se muestran las primeras coincidencias. Afina la búsqueda para obtener resultados más específicos.",
     "No matching records": "No se encontraron registros",
     "Try another word, name, email address, or phone number.": "Prueba otra palabra, nombre, correo o número de teléfono.",
-    "Open matching record": "Abrir el registro encontrado"
+    "Open matching record": "Abrir el registro encontrado",
+    "Task history": "Historial de la tarea",
+    "Created": "Creada",
+    "Creation date unavailable": "Fecha de creación no disponible"
   }
 }

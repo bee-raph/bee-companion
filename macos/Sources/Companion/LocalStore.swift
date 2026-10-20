@@ -193,10 +193,15 @@ final class LocalStore: @unchecked Sendable {
     try db.write { db in
       try db.execute(sql: "DELETE FROM conflicts WHERE id=?", arguments: [conflict.id])
       var item = keepLocal ? conflict.local : (conflict.server ?? conflict.local)
+      if item.kind == "tasks", let server = conflict.server {
+        item = TaskAudit.merging(item, with: keepLocal ? server : conflict.local)
+      }
       item.revision = conflict.server?.revision ?? 0
       if !keepLocal && conflict.server == nil { item.deleted = true }
       try Self.put(item, db: db)
-      if keepLocal {
+      if keepLocal
+        || (item.kind == "tasks" && item.body != conflict.server?.body && conflict.server != nil)
+      {
         let m = Mutation(item)
         try db.execute(
           sql: "INSERT INTO outbox(id,operation,payload) VALUES(?,?,?)",

@@ -95,7 +95,9 @@ import SwiftUI
   }
   func save(_ input: Item) {
     editGeneration += 1
-    let item = TaskCompletion.normalized(input, previous: items.first { $0.id == input.id })
+    let previous = items.first { $0.id == input.id }
+    let item = TaskAudit.recording(
+      TaskCompletion.normalized(input, previous: previous), previous: previous)
     do {
       try store.save(item)
       var saved = item

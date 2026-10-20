@@ -434,6 +434,9 @@ struct ItemEditor: View {
           LoadedNoteEditor(item: item, editor: noteEditing, commit: commitNote)
 
         }
+        if item.kind == "tasks" {
+          TaskAuditView(item: model.items.first(where: { $0.id == item.id }) ?? item)
+        }
         if ["tasks", "notes", "reminders"].contains(item.kind) { attachments }
         Divider()
         HStack {
