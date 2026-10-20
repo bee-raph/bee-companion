@@ -37,4 +37,18 @@ final class LocalizationCompletenessTests: XCTestCase {
       XCTAssertEqual(language.direction == .rightToLeft, language == .hebrew)
     }
   }
+  func testDatesUseTheSelectedInterfaceLanguage() {
+    let original = L10n.language
+    defer { L10n.language = original }
+    let date = Date(timeIntervalSince1970: 946_728_000)
+    let months: [AppLanguage: String] = [
+      .english: "January", .hebrew: "ינואר", .french: "janvier", .russian: "января",
+      .spanish: "enero",
+    ]
+    for (language, month) in months {
+      L10n.language = language
+      XCTAssertTrue(date.localizedFormatted(date: .complete, time: .omitted).contains(month))
+    }
+  }
+
 }

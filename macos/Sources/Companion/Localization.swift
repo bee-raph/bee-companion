@@ -77,3 +77,11 @@ extension AppModel {
     Task { await sync() }
   }
 }
+
+extension Date {
+  func localizedFormatted(date: Date.FormatStyle.DateStyle, time: Date.FormatStyle.TimeStyle)
+    -> String
+  {
+    formatted(Date.FormatStyle(date: date, time: time).locale(L10n.locale))
+  }
+}

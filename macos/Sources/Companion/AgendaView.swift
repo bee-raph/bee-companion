@@ -399,7 +399,10 @@ struct TodayView: View {
       VStack(alignment: .leading, spacing: 24) {
         HStack(alignment: .bottom) {
           VStack(alignment: .leading, spacing: 8) {
-            Text(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased()).font(
+            Text(
+              Date().formatted(.dateTime.weekday(.wide).month(.wide).day().locale(L10n.locale))
+                .uppercased()
+            ).font(
               .system(size: 10, weight: .semibold)
             ).tracking(1.7).foregroundStyle(.secondary)
             Text(L10n.text(greeting)).font(.system(size: 34, weight: .semibold))
@@ -470,7 +473,7 @@ struct TodayView: View {
                     }
                     Spacer()
                     Text(
-                      item.date!.formatted(
+                      item.date!.localizedFormatted(
                         date: .abbreviated,
                         time: item.body["dateOnly"] == "true" ? .omitted : .shortened)
                     ).font(.system(size: 11)).foregroundStyle(.secondary)
@@ -602,7 +605,7 @@ struct AgendaGrid: View {
             date = day
           } label: {
             VStack(spacing: 2) {
-              Text(day.formatted(.dateTime.day())).font(.headline)
+              Text(day.formatted(.dateTime.day().locale(L10n.locale))).font(.headline)
               if let hebrew = hebrewDays[HebrewAgendaPresentation.key(day)] {
                 Text(hebrew.date).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.75)
                 if !hebrew.events.isEmpty {

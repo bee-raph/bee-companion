@@ -65,7 +65,7 @@ struct ShabbatView: View {
               Text(time(clock.date)).font(
                 .system(size: 48 * scale, weight: .light, design: .rounded)
               ).monospacedDigit()
-              Text(clock.date.formatted(date: .complete, time: .omitted)).font(
+              Text(clock.date.localizedFormatted(date: .complete, time: .omitted)).font(
                 .system(size: 14 * scale)
               ).foregroundStyle(.white.opacity(0.6))
             }

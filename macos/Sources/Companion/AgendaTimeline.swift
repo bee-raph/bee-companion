@@ -219,8 +219,8 @@ struct AgendaTimeline: View {
         Text(entry.source).foregroundStyle(.secondary)
         if !entry.allDay {
           Text(
-            entry.start.formatted(date: .abbreviated, time: .shortened) + " – "
-              + entry.end.formatted(date: .omitted, time: .shortened))
+            entry.start.localizedFormatted(date: .abbreviated, time: .shortened) + " – "
+              + entry.end.localizedFormatted(date: .omitted, time: .shortened))
         }
         if let item = entry.item {
           Text(item.body["description"] ?? "").textSelection(.enabled)
@@ -242,8 +242,10 @@ struct AgendaTimeline: View {
           Text(entry.title).font(.system(size: 12, weight: .medium)).lineLimit(compact ? 1 : 3)
             .strikethrough(entry.item?.body["status"] == "Done")
           if !compact {
-            Text(entry.start.formatted(date: .omitted, time: .shortened)).font(.system(size: 10))
-              .foregroundStyle(.secondary)
+            Text(entry.start.localizedFormatted(date: .omitted, time: .shortened)).font(
+              .system(size: 10)
+            )
+            .foregroundStyle(.secondary)
           }
         }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
       }.buttonStyle(.plain)

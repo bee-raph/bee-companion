@@ -297,8 +297,11 @@ struct ItemListView: View {
               }
               HStack(spacing: 8) {
                 if let date = item.date {
-                  Label(date.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                  Label(
+                    date.localizedFormatted(date: .abbreviated, time: .omitted),
+                    systemImage: "calendar"
+                  )
+                  .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 if item.kind == "tasks" {
                   Text(L10n.text(item.body["status"] ?? "To do")).font(

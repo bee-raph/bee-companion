@@ -230,7 +230,7 @@ import SwiftUI
         changed = changed || !result.changes.isEmpty
         more = result.hasMore
       }
-      message = "Up to date · " + Date().formatted(date: .omitted, time: .shortened)
+      message = "Up to date · " + Date().localizedFormatted(date: .omitted, time: .shortened)
     } catch { message = "Offline / sync paused: " + error.localizedDescription }
     if changed { await reloadInBackground() }
   }
