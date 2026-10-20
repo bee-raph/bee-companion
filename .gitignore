@@ -1,0 +1,26 @@
+.venv/
+.build/
+.runtime*/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+macos/dist/
+files/
+companion.db
+
+# Never publish deployment data, credentials, signing material or local databases.
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.p12
+*.pfx
+*.key
+*.mobileprovision
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log

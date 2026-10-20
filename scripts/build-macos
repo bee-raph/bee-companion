@@ -1,0 +1,42 @@
+#!/bin/zsh
+set -euo pipefail
+ROOT=${0:A:h:h}
+cd "$ROOT/macos"
+MODE=${1:-debug}
+SCRATCH=${COMPANION_BUILD_PATH:-"$ROOT/macos/.build"}
+ARCH_FLAGS=()
+if [[ "$MODE" == release ]]; then
+  ARCH_FLAGS=(--arch arm64 --arch x86_64)
+  swift build -c release --arch arm64 --arch x86_64 --scratch-path "$SCRATCH"
+else
+  swift build --scratch-path "$SCRATCH"
+fi
+BIN_DIR=$(swift build -c "$MODE" "${ARCH_FLAGS[@]}" --show-bin-path --scratch-path "$SCRATCH")
+DIST="$ROOT/macos/dist"
+mkdir -p "$DIST"
+STAGE=$(mktemp -d "$DIST/.bee-build.XXXXXX")
+trap 'rm -rf "$STAGE"' EXIT
+APP="$STAGE/Bee Companion.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN_DIR/Companion" "$APP/Contents/MacOS/Companion"
+cp "$ROOT/macos/Info.plist" "$APP/Contents/Info.plist"
+if [[ -f "$ROOT/macos/Assets/AppIcon.icns" ]]; then cp "$ROOT/macos/Assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"; fi
+for bundle in "$BIN_DIR"/*.bundle(N); do cp -R "$bundle" "$APP/Contents/Resources/"; done
+IDENTITY=${SIGNING_IDENTITY:--}
+codesign --force --deep --options runtime --entitlements "$ROOT/macos/Companion.entitlements" --sign "$IDENTITY" "$APP"
+codesign --verify --deep --strict "$APP"
+python3 "$ROOT/scripts/publish_bundle.py" "$APP" "$DIST/Bee Companion.app"
+APP="$DIST/Bee Companion.app"
+if [[ "$MODE" == release ]]; then
+  DMG="$STAGE/Bee Companion.dmg"
+  hdiutil create -volname "Bee Companion" -srcfolder "$APP" -ov -format UDZO "$DMG"
+  if [[ -n "${NOTARY_PROFILE:-}" && "$IDENTITY" != - ]]; then
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun stapler staple "$DMG"
+  else
+    echo 'DMG built. Developer ID and NOTARY_PROFILE are required for notarization.'
+  fi
+  # A mounted installer must keep its original backing file as well.
+  mv -f "$DMG" "$DIST/Bee Companion.dmg"
+fi
+print "$APP"

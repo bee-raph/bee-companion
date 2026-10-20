@@ -1,0 +1,10 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+SQLAlchemy==2.0.40
+alembic==1.15.2
+psycopg[binary]==3.2.13
+argon2-cffi==23.1.0
+httpx==0.28.1
+python-multipart==0.0.20
+lse-data==0.14.0
+defusedxml==0.7.1

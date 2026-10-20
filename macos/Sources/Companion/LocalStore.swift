@@ -1,0 +1,180 @@
+import Foundation
+import GRDB
+
+final class LocalStore {
+  let db: DatabaseQueue
+  init(url: URL) throws {
+    db = try DatabaseQueue(path: url.path)
+    var migrations = DatabaseMigrator()
+    migrations.registerMigration("v1") { db in
+      try db.execute(
+        sql: "CREATE TABLE items(id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload BLOB NOT NULL)")
+      try db.execute(
+        sql:
+          "CREATE TABLE outbox(sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL, operation TEXT NOT NULL UNIQUE, payload BLOB NOT NULL)"
+      )
+      try db.execute(sql: "CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+      try db.execute(
+        sql: "CREATE TABLE conflicts(id TEXT PRIMARY KEY, local BLOB NOT NULL, server BLOB)")
+      try db.execute(
+        sql: "CREATE VIRTUAL TABLE search USING fts5(id UNINDEXED, title, description, body)")
+    }
+    migrations.registerMigration("v2-outbox") { db in
+      try db.execute(sql: "ALTER TABLE outbox ADD COLUMN sent INTEGER NOT NULL DEFAULT 0")
+    }
+    try migrations.migrate(db)
+  }
+  func all() throws -> [Item] {
+    try db.read { db in
+      try Data.fetchAll(db, sql: "SELECT payload FROM items").map {
+        try JSONDecoder().decode(Item.self, from: $0)
+      }
+    }
+  }
+  static func put(_ item: Item, db: Database) throws {
+    try db.execute(
+      sql: "INSERT OR REPLACE INTO items VALUES (?, ?, ?)",
+      arguments: [item.id, item.kind, try JSONEncoder().encode(item)])
+    try db.execute(sql: "DELETE FROM search WHERE id=?", arguments: [item.id])
+    if !item.deleted {
+      try db.execute(
+        sql: "INSERT INTO search VALUES(?,?,?,?)",
+        arguments: [item.id, item.title, item.body["description"] ?? "", item.body["text"] ?? ""])
+    }
+  }
+  func save(_ input: Item) throws {
+    try db.write { db in
+      var item = input
+      if let saved = try Data.fetchOne(
+        db, sql: "SELECT payload FROM items WHERE id=?", arguments: [item.id])
+      {
+        item.revision = try JSONDecoder().decode(Item.self, from: saved).revision
+      }
+      try Self.put(item, db: db)
+      // Preserve mutations already sent; coalesce only drafts that never left this device.
+      if try Int.fetchOne(
+        db, sql: "SELECT COUNT(*) FROM conflicts WHERE id=?", arguments: [item.id])! > 0
+      {
+        try db.execute(
+          sql: "UPDATE conflicts SET local=? WHERE id=?",
+          arguments: [try JSONEncoder().encode(item), item.id])
+        return
+      }
+      try db.execute(sql: "DELETE FROM outbox WHERE id=? AND sent=0", arguments: [item.id])
+      let m = Mutation(item)
+      try db.execute(
+        sql: "INSERT INTO outbox(id,operation,payload) VALUES(?,?,?)",
+        arguments: [item.id, m.operationID, try JSONEncoder().encode(m)])
+    }
+  }
+  func nextMutation() throws -> Mutation? {
+    try db.write { db in
+      guard
+        let row = try Row.fetchOne(
+          db, sql: "SELECT sequence,payload FROM outbox ORDER BY sequence LIMIT 1")
+      else { return nil }
+      try db.execute(
+        sql: "UPDATE outbox SET sent=1 WHERE sequence=?", arguments: [row["sequence"] as Int])
+      return try JSONDecoder().decode(Mutation.self, from: row["payload"] as Data)
+    }
+  }
+  func pending() throws -> [Mutation] {
+    try db.read { db in
+      try Data.fetchAll(db, sql: "SELECT payload FROM outbox ORDER BY sequence").map {
+        try JSONDecoder().decode(Mutation.self, from: $0)
+      }
+    }
+  }
+  func accept(_ result: PushResult.Result) throws {
+    try db.write { db in
+      guard
+        let data = try Data.fetchOne(
+          db, sql: "SELECT payload FROM outbox WHERE operation=?", arguments: [result.operationID])
+      else { return }
+      let mutation = try JSONDecoder().decode(Mutation.self, from: data)
+      if result.status == "conflict" {
+        let local = try Data.fetchOne(
+          db, sql: "SELECT payload FROM items WHERE id=?", arguments: [mutation.id])!
+        try db.execute(
+          sql: "INSERT OR REPLACE INTO conflicts VALUES(?,?,?)",
+          arguments: [mutation.id, local, try result.server.map { try JSONEncoder().encode($0) }])
+        // Keep local draft and block this record until explicitly resolved.
+        try db.execute(sql: "DELETE FROM outbox WHERE id=?", arguments: [mutation.id])
+      } else if let record = result.record {
+        try db.execute(sql: "DELETE FROM outbox WHERE operation=?", arguments: [result.operationID])
+        let later = try Row.fetchAll(
+          db, sql: "SELECT sequence,payload FROM outbox WHERE id=? ORDER BY sequence",
+          arguments: [record.id])
+        if later.isEmpty {
+          try Self.put(record, db: db)
+        } else {
+          var revision = record.revision
+          for row in later {
+            var m = try JSONDecoder().decode(Mutation.self, from: row["payload"] as Data)
+            m.expectedRevision = revision
+            revision += 1
+            try db.execute(
+              sql: "UPDATE outbox SET payload=? WHERE sequence=?",
+              arguments: [try JSONEncoder().encode(m), row["sequence"] as Int])
+          }
+        }
+      }
+    }
+  }
+  func apply(_ page: PullResult) throws {
+    try db.write { db in
+      for item in page.changes {
+        let dirty =
+          try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox WHERE id=?", arguments: [item.id])!
+          > 0
+        let conflict =
+          try Int.fetchOne(
+            db, sql: "SELECT COUNT(*) FROM conflicts WHERE id=?", arguments: [item.id])! > 0
+        if !dirty && !conflict { try Self.put(item, db: db) }
+      }
+      try db.execute(
+        sql: "INSERT OR REPLACE INTO settings VALUES('cursor',?)", arguments: [String(page.cursor)])
+    }
+  }
+  func cursor() throws -> Int {
+    try db.read { db in
+      Int(try String.fetchOne(db, sql: "SELECT value FROM settings WHERE key='cursor'") ?? "0") ?? 0
+    }
+  }
+  func conflicts() throws -> [Conflict] {
+    try db.read { db in
+      try Row.fetchAll(db, sql: "SELECT * FROM conflicts").map { row in
+        let server: Data? = row["server"]
+        return Conflict(
+          id: row["id"], local: try JSONDecoder().decode(Item.self, from: row["local"]),
+          server: try server.map { try JSONDecoder().decode(Item.self, from: $0) })
+      }
+    }
+  }
+  func resolve(_ conflict: Conflict, keepLocal: Bool) throws {
+    try db.write { db in
+      try db.execute(sql: "DELETE FROM conflicts WHERE id=?", arguments: [conflict.id])
+      var item = keepLocal ? conflict.local : (conflict.server ?? conflict.local)
+      item.revision = conflict.server?.revision ?? 0
+      if !keepLocal && conflict.server == nil { item.deleted = true }
+      try Self.put(item, db: db)
+      if keepLocal {
+        let m = Mutation(item)
+        try db.execute(
+          sql: "INSERT INTO outbox(id,operation,payload) VALUES(?,?,?)",
+          arguments: [item.id, m.operationID, try JSONEncoder().encode(m)])
+      }
+    }
+  }
+  func search(_ query: String) throws -> Set<String> {
+    let tokens = query.split(whereSeparator: { $0.isWhitespace }).map {
+      "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }.joined(separator: " AND ")
+    guard !tokens.isEmpty else { return [] }
+    return try db.read { db in
+      Set(
+        try String.fetchAll(
+          db, sql: "SELECT id FROM search WHERE search MATCH ?", arguments: [tokens]))
+    }
+  }
+}

@@ -1,0 +1,117 @@
+import Foundation
+import Security
+
+struct Keychain {
+  static func load(_ key: String) -> Data? {
+    var result: CFTypeRef?
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "WorkCompanion",
+      kSecAttrAccount as String: key, kSecReturnData as String: true,
+    ]
+    guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+    return result as? Data
+  }
+  static func save(_ data: Data?, key: String) throws {
+    let query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "WorkCompanion",
+      kSecAttrAccount as String: key,
+    ]
+    SecItemDelete(query as CFDictionary)
+    if let data {
+      var insert = query
+      insert[kSecValueData as String] = data
+      insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+      let status = SecItemAdd(insert as CFDictionary, nil)
+      guard status == errSecSuccess else {
+        throw CompanionError.message("Keychain error \(status)")
+      }
+    }
+  }
+}
+actor API {
+  let configuration: InstanceConfiguration
+  var tokens: Tokens?
+  private var refreshFlight: Task<Void, Error>?
+  init(_ config: InstanceConfiguration) {
+    configuration = config
+    tokens = Keychain.load(config.instanceID).flatMap {
+      try? JSONDecoder().decode(Tokens.self, from: $0)
+    }
+  }
+  func login(_ login: String, _ password: String) async throws {
+    let remote: RemoteInstance = try await request("instance", authorized: false)
+    guard remote.instanceID == configuration.instanceID, remote.apiVersion == 1 else {
+      throw CompanionError.message("This backend does not match your instance configuration")
+    }
+    let result: Tokens = try await request(
+      "auth/login", method: "POST",
+      body: JSONSerialization.data(withJSONObject: ["login": login, "password": password]),
+      authorized: false)
+    try store(result)
+  }
+  func store(_ value: Tokens) throws {
+    try Keychain.save(JSONEncoder().encode(value), key: configuration.instanceID)
+    tokens = value
+  }
+  func signOut() async throws {
+    let _: [String: Bool] = try await request("auth/logout", method: "POST")
+    try Keychain.save(nil, key: configuration.instanceID)
+    tokens = nil
+  }
+  func request<T: Decodable>(
+    _ path: String, method: String = "GET", body: Data? = nil, authorized: Bool = true,
+    retry: Bool = true
+  ) async throws -> T {
+    let data = try await raw(path, method: method, body: body, authorized: authorized, retry: retry)
+    return try JSONDecoder().decode(T.self, from: data)
+  }
+  private func refreshSession(_ token: String) async throws {
+    if let flight = refreshFlight {
+      try await flight.value
+      return
+    }
+    let flight = Task {
+      let refreshed: Tokens = try await self.request(
+        "auth/refresh", method: "POST",
+        body: JSONSerialization.data(withJSONObject: ["token": token]), authorized: false,
+        retry: false)
+      try self.store(refreshed)
+    }
+    refreshFlight = flight
+    defer { refreshFlight = nil }
+    try await flight.value
+  }
+  func raw(
+    _ path: String, method: String = "GET", body: Data? = nil, authorized: Bool = true,
+    retry: Bool = true, contentType: String = "application/json"
+  ) async throws -> Data {
+    guard let url = URL(string: configuration.apiBaseURL.absoluteString + "/api/v1/" + path) else {
+      throw CompanionError.message("Invalid API URL")
+    }
+    var request = URLRequest(url: url)
+    request.httpMethod = method
+    request.httpBody = body
+    request.timeoutInterval = 30
+    request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+    if authorized {
+      guard let tokens else { throw CompanionError.message("Sign in in Settings") }
+      request.setValue("Bearer " + tokens.accessToken, forHTTPHeaderField: "Authorization")
+    }
+    let usedToken = tokens?.accessToken
+    let (data, response) = try await URLSession.shared.data(for: request)
+    guard let http = response as? HTTPURLResponse else {
+      throw CompanionError.message("Invalid server response")
+    }
+    if http.statusCode == 401, authorized, retry, let current = tokens {
+      if current.accessToken == usedToken { try await refreshSession(current.refreshToken) }
+      return try await raw(
+        path, method: method, body: body, authorized: authorized, retry: false,
+        contentType: contentType)
+    }
+    guard (200..<300).contains(http.statusCode) else {
+      throw CompanionError.message(
+        String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
+    }
+    return data
+  }
+}

@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Local deployment administration. Secrets never enter command-line arguments."""
+
+import argparse, getpass, json, os, secrets, shutil, subprocess, sys, uuid
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+p = argparse.ArgumentParser()
+p.add_argument("--instance-dir", type=Path, default=ROOT / ".runtime")
+p.add_argument(
+    "command",
+    choices=[
+        "init",
+        "start",
+        "stop",
+        "status",
+        "validate",
+        "upgrade",
+        "backup",
+        "restore",
+        "reset-password",
+    ],
+)
+p.add_argument("--name", default="My Companion")
+p.add_argument("--login", default="owner")
+p.add_argument("--port", type=int, default=8787)
+p.add_argument("--archive", type=Path)
+p.add_argument("--export-to", type=Path)
+a = p.parse_args()
+runtime = a.instance_dir.expanduser().resolve()
+config = runtime / "deployment.json"
+
+
+def compose(*args, check=True):
+    values = json.loads(config.read_text())
+    env = {
+        **os.environ,
+        **{k: str(v) for k, v in values.items()},
+        "RUNTIME_DIR": str(runtime),
+    }
+    return subprocess.run(
+        ["docker", "compose", "-f", str(ROOT / "docker-compose.yml"), *args],
+        env=env,
+        check=check,
+    )
+
+
+if a.command == "init":
+    runtime.mkdir(parents=True, exist_ok=True)
+    runtime.chmod(0o700)
+    if not config.exists():
+        if not 1024 <= a.port <= 65535:
+            p.error("Port must be between 1024 and 65535")
+        ident = str(uuid.uuid4())
+        values = {
+            "INSTANCE_ID": ident,
+            "INSTANCE_NAME": a.name,
+            "API_PORT": a.port,
+            "COMPOSE_PROJECT_NAME": "companion-" + ident[:8],
+        }
+        config.write_text(json.dumps(values, indent=2))
+        config.chmod(0o600)
+        for name, value in [
+            ("db_password", secrets.token_urlsafe(40)),
+            (
+                "lse_api_key",
+                (
+                    (runtime / "lse_api_key").read_text()
+                    if (runtime / "lse_api_key").exists()
+                    else getpass.getpass("London Strategic Edge key (optional): ")
+                ),
+            ),
+        ]:
+            path = runtime / name
+            path.write_text(value)
+            path.chmod(0o600)
+        (runtime / "client.companion-instance.json").write_text(
+            json.dumps(
+                {
+                    "configurationVersion": 1,
+                    "instanceName": a.name,
+                    "instanceID": ident,
+                    "apiBaseURL": f"http://127.0.0.1:{a.port}",
+                    "apiVersion": 1,
+                },
+                indent=2,
+            )
+        )
+    compose("build")
+    compose("up", "-d", "--wait", "db")
+    compose("run", "--rm", "migrate")
+    compose("run", "--rm", "maintenance", "owner", "--login", a.login)
+    compose("up", "-d", "--wait", "api", "worker")
+    print("Client configuration:", runtime / "client.companion-instance.json")
+elif not config.exists():
+    p.error("Initialize this instance first")
+elif a.command == "start":
+    compose("up", "-d", "--wait", "api", "worker")
+elif a.command == "stop":
+    compose("stop")
+elif a.command == "status":
+    compose("ps")
+elif a.command == "validate":
+    compose("config", "--quiet")
+    compose(
+        "exec",
+        "-T",
+        "api",
+        "python",
+        "-c",
+        "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health/ready').read().decode())",
+    )
+elif a.command == "backup":
+    if a.export_to:
+        values = json.loads(config.read_text())
+        env = {
+            **os.environ,
+            **{k: str(v) for k, v in values.items()},
+            "RUNTIME_DIR": str(runtime),
+        }
+        result = subprocess.run(
+            [
+                "docker",
+                "compose",
+                "-f",
+                str(ROOT / "docker-compose.yml"),
+                "run",
+                "--rm",
+                "-T",
+                "maintenance",
+                "backup",
+            ],
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        archive = next(
+            line for line in result.stdout.splitlines() if line.startswith("/backups/")
+        )
+        a.export_to.mkdir(parents=True, exist_ok=True)
+        compose("cp", "api:" + archive, str(a.export_to.resolve() / Path(archive).name))
+    else:
+        compose("run", "--rm", "maintenance", "backup")
+elif a.command == "reset-password":
+    compose("run", "--rm", "maintenance", "reset-password")
+elif a.command == "upgrade":
+    compose("stop", "api", "worker")
+    compose("run", "--rm", "maintenance", "backup")
+    compose("build")
+    compose("run", "--rm", "migrate")
+    compose("up", "-d", "--wait", "api", "worker")
+elif a.command == "restore":
+    if not a.archive or not a.archive.is_file():
+        p.error("--archive must be a backup file")
+    compose("stop", "api", "worker")
+    compose(
+        "run",
+        "--rm",
+        "-v",
+        str(a.archive.resolve()) + ":/restore.tar.gz:ro",
+        "maintenance",
+        "restore",
+        "--archive",
+        "/restore.tar.gz",
+    )
+    compose("up", "-d", "--wait", "api", "worker")

@@ -1,0 +1,76 @@
+name: ${COMPOSE_PROJECT_NAME:-companion}
+x-app: &app
+  build: ./backend
+  image: companion-backend:0.1.0
+  environment: &environment
+    DATABASE_URL: postgresql+psycopg://companion:{password}@db/companion
+    DB_PASSWORD_FILE: /run/secrets/db_password
+    INSTANCE_ID: ${INSTANCE_ID:?Run companionctl init first}
+    INSTANCE_NAME: ${INSTANCE_NAME:-Companion}
+    FILES_ROOT: /files
+    BACKUPS_ROOT: /backups
+    LSE_API_KEY_FILE: /run/secrets/lse_api_key
+  secrets: [db_password, lse_api_key]
+  volumes: [files:/files, backups:/backups]
+  networks: [private]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+services:
+  db:
+    image: postgres:17.4-bookworm
+    environment:
+      POSTGRES_DB: companion
+      POSTGRES_USER: companion
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [database:/var/lib/postgresql/data]
+    networks: [private]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U companion -d companion"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  migrate:
+    <<: *app
+    command: [alembic, upgrade, head]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *app
+    ports: ["127.0.0.1:${API_PORT:-8787}:8000"]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *app
+    command: [python, -m, app.worker]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  maintenance:
+    <<: *app
+    profiles: [tools]
+    entrypoint: [python, -m, app.maintenance]
+    depends_on:
+      db: {condition: service_healthy}
+networks:
+  private: {}
+volumes:
+  database:
+  files:
+  backups:
+secrets:
+  db_password:
+    file: ${RUNTIME_DIR:-./.runtime}/db_password
+  lse_api_key:
+    file: ${RUNTIME_DIR:-./.runtime}/lse_api_key
