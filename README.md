@@ -14,10 +14,10 @@ Each deployment has exactly one owner. There is no public registration, collabor
 
 - **Today:** due tasks, reminders, local weather, three world clocks, Hebrew date, zmanim, and a compact stock watchlist. The layout expands with the window. Clocks omit seconds; the zmanim strip advances to the next upcoming time.
 - **Global search:** use the toolbar search field from any page to search the full text of notes, reminder and task descriptions, and CRM identity, contact details, addresses, notes, and activity. Results appear as cards in a grid with the type, title, and a text excerpt. Click a card to open that exact record; CRM activity matches open the owning contact. Archived work is included, deleted records are excluded, and search works offline. Prefixes, text within words, email addresses, and phone-number suffixes are supported. Up to 200 matches are shown; narrow the query when the limit is reached.
-- **Tasks:** title, description, due date or date/time, status, attachments, reminders, TXT/RTF export, and sharing. Click the circle or select Done to move a task into the second **Archived** tab. Click its checkmark or choose Restore to return it to To do in **Active**. Completion and archive state synchronize together. Task history shows the creation date and each status transition with its timestamp, including completion and reopening. History is retained offline and synchronizes with the task; resolving a conflict preserves history from both versions. Creation dates for existing tasks without a recorded date are shown as unavailable.
+- **Tasks:** title, description, due date or date/time, status, attachments, reminders, TXT/RTF export, and sharing. Click the circle or select Done to move a task into the second **Archived** tab. Click its checkmark or choose Restore to return it to To do in **Active**. Statuses are To do, In progress, Done, and Cancelled; filters cover All, Today, Upcoming, and Overdue. The sidebar Archive also collects archived notes and alarms. Completion and archive state synchronize together. Task history shows the creation date and each status transition with its timestamp, including completion and reopening. History is retained offline and synchronizes with the task; resolving a conflict preserves history from both versions. Creation dates for existing tasks without a recorded date are shown as unavailable.
 - **CRM:** open **CRM** in the Workspace sidebar to manage companies and individuals with identity, company and tax details, multiple addresses, emails, telephone/mobile/WhatsApp numbers, and client/prospect/provider/simple-contact categories. Each contact has one autosaved rich-text note using the same editor as Notes: bold, italic, underline, fonts, sizes, lists, separators, and inline images. Rich text and embedded images synchronize with the contact and remain editable offline. Contact notes load in the background, and activity history loads as you scroll. Contact activity supports phone calls, sent emails, WhatsApp messages, and invoices, each with a title, description, date, optional reminder, and documents. Emails open your mail app; mobile and WhatsApp links open a WhatsApp conversation. Validated international numbers display their country flag and formatting, including offline. Enter numbers with `+` and a country calling code, one per line. Contacts, actions, attachment links, and reminders use the authenticated backend sync and database, with local offline editing and conflict handling. Deleting a contact also removes its activity and reminders; attached files stay in the library.
 - **Files:** an app-owned folder tree, resumable upload/download, immutable versions, SHA-256 verification, rename/move/duplicate, trash/restore, confirmed permanent deletion, offline copies, Quick Look, default-app opening, and external-edit detection. A single click on a name or icon opens the file or folder. Colored icons identify file types. Moving files preserves attachment links.
-- **Notes:** a native rich-text body editor with bold, italic, underline, font, font size, inline images, bullet and numbered lists, and separators. Formatting affects the selection or future typing at the caret. Autosave serializes immutable snapshots on a background queue and flushes pending edits on close or quit. Markdown is an import/export format. Export converts supported formatting, links, lists, separators, and embedded images; Markdown cannot express every rich-text font or layout. RTFD export preserves inline images; standard RTF export contains text. Notes include title, description, search, attachments, and sharing.
+- **Notes:** a native rich-text body editor with bold, italic, underline, font, font size, inline images, bullet and numbered lists, and separators. Formatting affects the selection or future typing at the caret. Autosave serializes immutable snapshots on a background queue and flushes pending edits on close or quit. Use **Import Markdown / RTF** in Notes to import Markdown, RTF, or RTFD documents. Markdown is an import/export format. Export converts supported formatting, links, lists, separators, and embedded images; Markdown cannot express every rich-text font or layout. RTFD export preserves inline images; standard RTF export contains text. Notes include title, description, search, attachments, and sharing.
 - **Record dates:** notes, files and folders, CRM contacts and actions, and alarms display their created and last-updated dates. Dates synchronize with each record and are recorded offline. Editing preserves the creation date; opening or synchronizing a record does not change its update date. Records without a recorded date show it as unavailable.
 - **Attachments:** **Attach files…** opens the macOS picker for any local file, including multiple selections, in tasks, notes, and reminders. No library import is required beforehand. The app prepares a managed copy and checksum off the UI thread and queues synchronization. Copies also appear in Files. Removing an attachment keeps the file. Note and reminder deletion requires confirmation from both the list’s **−** control and the editor’s Trash button.
 - **Alarms:** standalone or linked reminders, full-description popup windows while running, macOS notifications when closed, snooze, dismiss, missed-occurrence recovery, and one-time/daily/weekday/weekly/monthly recurrence. Recurrence preserves local wall-clock time across daylight-saving changes; monthly recurrence skips months without the selected day.
@@ -38,6 +38,16 @@ Uploads read at most 4 MiB per chunk. Downloads stream to temporary files, and c
 The backend coalesces duplicate provider fetches, fetches up to four independent stock quotes concurrently, and performs upload disk writes outside its event loop. Upload checksum verification runs outside the synchronization lock. Backup hashing and compression run after the database snapshot is secured, without holding that lock. Database indexes support session rotation, file version lookup, scheduled jobs, and the local outbox. Orphan-file cleanup runs hourly; backup scheduling is checked every 30 seconds. `scripts/companionctl upgrade` backs up data, builds the backend, applies migrations, and restarts services.
 
 ## Get started
+
+For a configured installation, start Docker Desktop, wait until it is running, and run these commands from the checkout:
+
+```sh
+scripts/companionctl start
+scripts/companionctl validate
+open "macos/dist/Bee Companion.app"
+```
+
+Keep Docker running while you use backend services. Sign in under **Settings** if prompted, then choose **Synchronize** (⌘⇧R). Follow the steps below for a first installation; no terminal command is needed to open the app after setup.
 
 ### 1. Prerequisites and source
 
@@ -99,7 +109,7 @@ The API listens only at `http://127.0.0.1:8787`; the database has no published p
 
 ### 4. Connect and configure
 
-Open the built app. In **Settings → Import instance configuration**, choose:
+Open `macos/dist/Bee Companion.app` in Finder, or run `open "macos/dist/Bee Companion.app"` from the checkout. In **Settings → Import instance configuration**, press **⌘⇧G** in the file picker to enter the hidden `.runtime` folder and choose:
 
 ```text
 <checkout>/.runtime/client.companion-instance.json
@@ -125,7 +135,7 @@ Weather comes from [Open-Meteo](https://open-meteo.com/); Hebrew observances and
 
 SQLite/GRDB stores each local record and outgoing mutation atomically. Saves schedule automatic sync after a short pause. The client pushes revision-checked, idempotent operations and pulls ordered changes on launch, reconnect, manual sync, and periodically while running. Pull pages and cursors commit atomically. Conflicts preserve both drafts for explicit resolution in Settings.
 
-Backend storage includes tasks and archive state, rich note bodies and inline images, folders, file metadata and immutable bytes, attachment links, reminders and occurrence actions, watchlist/mappings, and preferences: language, clocks, location, Hebrew calendar settings, feeds, Shabbat refresh and selected stocks, calendar selection, and agenda view mode. Uploads resume by session/offset and verify SHA-256 before finalization; downloads verify checksums. File renames and moves change metadata rather than physical object paths. External edits can be uploaded as new versions.
+Backend storage includes task status history, record dates, CRM contacts and activity, contact notes, tasks and archive state, rich note bodies and inline images, folders, file metadata and immutable bytes, attachment links, reminders and occurrence actions, watchlist/mappings, and preferences: language, clocks, location, Hebrew calendar settings, feeds, Shabbat refresh and selected stocks, calendar selection, and agenda view mode. Uploads resume by session/offset and verify SHA-256 before finalization; downloads verify checksums. File renames and moves change metadata rather than physical object paths. External edits can be uploaded as new versions.
 
 Sign-in sessions are stored in `~/Library/Application Support/WorkCompanion/Sessions/`, with owner-only folder/file permissions (0700/0600), separately for each instance and excluded from backup. Passwords are never saved. Session tokens use filesystem permissions rather than Keychain encryption and app access controls, so other processes running as the same macOS user can read them. Launch and session refresh do not access Keychain. If no private session is saved, sign in once in Settings. Signing out clears the local session.
 
@@ -169,7 +179,7 @@ python3 scripts/check_translations.py
 python3 scripts/check_secrets.py --staged
 ```
 
-Checks cover storage/sync, full settings persistence, files, note formatting and Markdown export, task archives, agenda overlaps and daylight-saving boundaries, RSS, authentication, and packaging. The translation audit checks all five catalogs for matching keys, duplicate keys, empty entries, format arguments, and static UI references. Verification runs locally; the repository has no GitHub Actions workflows. API documentation is available at `http://127.0.0.1:8787/docs`.
+Checks cover storage/sync, CRM and rich contact notes, task history, record timestamps, private session persistence, global search, Hebrew dates, full settings persistence, files, note formatting and Markdown export, task archives, agenda overlaps and daylight-saving boundaries, RSS, authentication, and packaging. The translation audit checks all five catalogs for matching keys, duplicate keys, empty entries, format arguments, static UI references, backend messages, and localized Calendar permission text. Verification runs locally; the repository has no GitHub Actions workflows. API documentation is available at `http://127.0.0.1:8787/docs`.
 
 There is no login launch or background alarm helper. Closing the last main window quits the app. macOS governs closed-app notifications; a sleeping or powered-off Mac cannot guarantee an on-time popup. The client schedules the earliest 60 occurrences within 30 days. File cache eviction is not implemented. Calendar permissions, notification delivery, sharing apps, screen readability, and installation on another Mac need validation on the target machine. Notarization requires Developer ID credentials.
 
@@ -189,10 +199,10 @@ Bee Companion הוא **כלי עזר מקורי ל־macOS למשתמש יחיד*
 
 - **היום:** משימות, תזכורות, מזג אוויר, שלושה שעונים עולמיים, תאריך עברי, זמני היום ורשימת מניות מקוצרת. הממשק מתרחב עם החלון, השעונים אינם מציגים שניות ורצועת זמני היום מתקדמת לזמן הבא.
 - **חיפוש כללי:** השתמשו בשדה החיפוש בסרגל הכלים מכל מסך לחיפוש בתוכן המלא של הערות, בתיאורי תזכורות ומשימות ובפרטי זהות וקשר, כתובות, הערות ופעילות ב־CRM. התוצאות מוצגות ברשת כרטיסים עם סוג, כותרת וקטע טקסט. לחיצה פותחת את הרשומה המתאימה; התאמה בפעילות CRM פותחת את איש הקשר שלה. פריטים בארכיון נכללים, פריטים שנמחקו אינם נכללים והחיפוש זמין ללא חיבור. ניתן לחפש תחילת מילה, טקסט בתוך מילים, דוא״ל וסיומות של מספרי טלפון. מוצגות עד 200 התאמות; אם הגעתם למגבלה, צמצמו את השאילתה.
-- **משימות:** כותרת, תיאור, מועד או תאריך ושעה, מצב, קבצים מצורפים, תזכורות, ייצוא TXT/RTF ושיתוף. לחיצה על העיגול או בחירת בוצע מעבירה את המשימה ללשונית השנייה, **בארכיון**. לחיצה על סימן הביקורת או בחירת שחזור מחזירה אותה לביצוע בלשונית **פעילות**. מצב הביצוע והארכוב מסתנכרנים יחד. היסטוריית המשימה מציגה את תאריך היצירה וכל מעבר מצב עם חותמת זמן, כולל השלמה ופתיחה מחדש. ההיסטוריה נשמרת ללא חיבור ומסתנכרנת עם המשימה; פתרון התנגשות שומר את ההיסטוריה משתי הגרסאות. תאריכי יצירה של משימות קיימות ללא תאריך מתועד מוצגים כלא זמינים.
+- **משימות:** כותרת, תיאור, מועד או תאריך ושעה, מצב, קבצים מצורפים, תזכורות, ייצוא TXT/RTF ושיתוף. לחיצה על העיגול או בחירת בוצע מעבירה את המשימה ללשונית השנייה, **בארכיון**. לחיצה על סימן הביקורת או בחירת שחזור מחזירה אותה לביצוע בלשונית **פעילות**. המצבים הם לביצוע, בתהליך, בוצע ובוטל; ניתן לסנן לפי הכול, היום, קרובים ובאיחור. הארכיון בסרגל הצד כולל גם הערות והתראות בארכיון. מצב הביצוע והארכוב מסתנכרנים יחד. היסטוריית המשימה מציגה את תאריך היצירה וכל מעבר מצב עם חותמת זמן, כולל השלמה ופתיחה מחדש. ההיסטוריה נשמרת ללא חיבור ומסתנכרנת עם המשימה; פתרון התנגשות שומר את ההיסטוריה משתי הגרסאות. תאריכי יצירה של משימות קיימות ללא תאריך מתועד מוצגים כלא זמינים.
 - **CRM:** פתחו את **CRM** בסרגל הצד של סביבת העבודה לניהול חברות ואנשים פרטיים עם פרטי זהות, חברה ומס, כתובות מרובות, דוא״ל, טלפונים וניידים ו־WhatsApp. סוגי קשר: לקוח, לקוח פוטנציאלי, ספק ואיש קשר. לכל איש קשר הערה עשירה אחת הנשמרת אוטומטית באותו עורך של ההערות: הדגשה, נטייה, קו תחתון, גופנים וגדלים, רשימות, מפרידים ותמונות בגוף ההערה. העיצוב והתמונות מסתנכרנים עם איש הקשר וזמינים לעריכה ללא חיבור. הערות נטענות ברקע והיסטוריית הפעילות נטענת עם הגלילה. ניתן לתעד שיחה, דוא״ל, הודעת WhatsApp וחשבונית שנשלחו, עם כותרת, תיאור, תאריך, תזכורת ומסמכים. דוא״ל פותח את יישום הדואר ונייד פותח שיחת WhatsApp. מספרים מוצגים בתבנית בינלאומית עם דגל המדינה גם ללא חיבור; יש להזין מספר אחד בשורה עם `+` וקידומת מדינה. אנשי קשר, פעילות, צירופים ותזכורות נשמרים מקומית ומסתנכרנים לשרת ולמסד הנתונים עם טיפול בהתנגשויות. מחיקת איש קשר מסירה גם פעילות ותזכורות, אך המסמכים נשארים בספריית הקבצים.
 - **קבצים:** עץ תיקיות בבעלות האפליקציה, העלאה והורדה שניתנות לחידוש, גרסאות שאינן נדרסות, בדיקת SHA-256, שינוי שם, העברה, שכפול, סל ושחזור, מחיקה סופית באישור, עותקים לא מקוונים, Quick Look, פתיחה באפליקציית ברירת המחדל וזיהוי עריכה חיצונית. לחיצה אחת על השם או הסמל פותחת את הקובץ או התיקייה. סמלים צבעוניים מזהים סוגי קבצים, והעברה אינה שוברת צירופים.
-- **הערות:** עורך טקסט עשיר מקורי עם הדגשה, הטיה, קו תחתון, גופן, גודל, תמונות, רשימות תבליטים ומספור וקווי הפרדה. העיצוב חל על הבחירה או על הקלדה עתידית בנקודת הסמן. שמירה אוטומטית מקודדת תמונות מצב בלתי משתנות בתור רקע ושומרת עריכות ממתינות בסגירה או ביציאה. Markdown משמש לייבוא ולייצוא. הייצוא ממיר עיצוב נתמך, קישורים, רשימות, קווי הפרדה ותמונות; הוא אינו תומך בכל גופן או פריסה של טקסט עשיר. ייצוא RTFD שומר תמונות, ו־RTF רגיל מכיל טקסט. הערות כוללות גם כותרת, תיאור, חיפוש, צירופים ושיתוף.
+- **הערות:** עורך טקסט עשיר מקורי עם הדגשה, הטיה, קו תחתון, גופן, גודל, תמונות, רשימות תבליטים ומספור וקווי הפרדה. העיצוב חל על הבחירה או על הקלדה עתידית בנקודת הסמן. שמירה אוטומטית מקודדת תמונות מצב בלתי משתנות בתור רקע ושומרת עריכות ממתינות בסגירה או ביציאה. השתמשו ב־**ייבוא Markdown / RTF** במסך ההערות לייבוא מסמכי Markdown, RTF או RTFD. Markdown משמש לייבוא ולייצוא. הייצוא ממיר עיצוב נתמך, קישורים, רשימות, קווי הפרדה ותמונות; הוא אינו תומך בכל גופן או פריסה של טקסט עשיר. ייצוא RTFD שומר תמונות, ו־RTF רגיל מכיל טקסט. הערות כוללות גם כותרת, תיאור, חיפוש, צירופים ושיתוף.
 - **תאריכי רשומות:** הערות, קבצים ותיקיות, אנשי קשר ופעילויות CRM והתראות מציגים תאריך יצירה ועדכון אחרון. התאריכים מסתנכרנים עם הרשומה ונשמרים גם ללא חיבור. עריכה שומרת את תאריך היצירה; פתיחה או סנכרון אינם משנים את תאריך העדכון. תאריך שלא תועד מוצג כלא זמין.
 - **צירופים:** **צירוף קבצים…** פותח את בוחר הקבצים של macOS במשימות, בהערות ובתזכורות, עם אפשרות לבחור כמה קבצים מקומיים. אין צורך בייבוא מוקדם לספרייה. האפליקציה מכינה עותק מנוהל וחתימה מחוץ לתהליכון הממשק ומתזמנת סנכרון. העותקים מופיעים גם בקבצים. הסרת צירוף שומרת את הקובץ. מחיקת הערה או תזכורת דורשת אישור, הן בכפתור **−** ברשימה והן בכפתור הסל בעורך.
 - **תזכורות והתראות:** תזכורות עצמאיות או מקושרות, חלון עם התיאור המלא בזמן שהאפליקציה פועלת, התראות macOS כשהיא סגורה, נודניק, סגירה ושחזור מועדים שהוחמצו. נתמכת חזרה חד־פעמית, יומית, בימי שבוע נבחרים, שבועית וחודשית. החזרה שומרת על השעה המקומית בשינויי שעון; חודש ללא היום שנבחר מדולג.
@@ -213,6 +223,16 @@ Bee Companion הוא **כלי עזר מקורי ל־macOS למשתמש יחיד*
 השרת מאחד בקשות כפולות לספקים וטוען עד ארבעה ציטוטי מניות עצמאיים במקביל. כתיבת מקטעי העלאה אינה חוסמת את לולאת האירועים ואימות סכום הביקורת פועל מחוץ לנעילת הסנכרון. חישוב סכומי הביקורת ודחיסת גיבויים פועלים אחרי אבטחת תמונת המצב של מסד הנתונים, ללא החזקת אותה נעילה. אינדקסים תומכים בהחלפת סשנים, חיפוש גרסאות קבצים, משימות מתוזמנות ותור הסנכרון המקומי. ניקוי קבצים יתומים פועל מדי שעה, ותזמון גיבויים נבדק מדי 30 שניות. הפקודה `scripts/companionctl upgrade` מגבה נתונים, בונה את השרת, מחילה הגירות ומפעילה מחדש את השירותים.
 
 ## תחילת עבודה
+
+בהתקנה שכבר הוגדרה, הפעילו Docker Desktop, המתינו עד שהוא פועל והריצו מתיקיית המאגר:
+
+```sh
+scripts/companionctl start
+scripts/companionctl validate
+open "macos/dist/Bee Companion.app"
+```
+
+השאירו Docker פועל בזמן השימוש בשירותי השרת. התחברו ב־**הגדרות** אם נדרש ובחרו **סנכרון** (⌘⇧R). בהתקנה ראשונה פעלו לפי השלבים להלן; לאחר ההגדרה ניתן לפתוח את האפליקציה ללא פקודה במסוף.
 
 ### 1. דרישות וקוד המקור
 
@@ -274,7 +294,7 @@ scripts/companionctl validate
 
 ### 4. חיבור והגדרה
 
-פתחו את האפליקציה הבנויה. ב־**Settings → Import instance configuration** בחרו:
+פתחו ב־Finder את `macos/dist/Bee Companion.app`, או הריצו מתיקיית המאגר `open "macos/dist/Bee Companion.app"`. ב־**הגדרות ← ייבוא תצורת מופע** (Settings → Import instance configuration), לחצו **⌘⇧G** בבוחר הקבצים כדי להזין את נתיב התיקייה המוסתרת `.runtime` ובחרו:
 
 ```text
 <checkout>/.runtime/client.companion-instance.json
@@ -300,7 +320,7 @@ scripts/companionctl validate
 
 SQLite/GRDB שומר אטומית רשומה מקומית ופעולה לשליחה. שמירה מתזמנת סנכרון לאחר הפסקה קצרה. הלקוח דוחף פעולות ניתנות לחזרה עם בדיקת גרסה ומושך שינויים מסודרים בהפעלה, בחיבור מחדש, בסנכרון ידני ובמחזוריות בזמן פעילות. דפי שינויים וסמנים נשמרים אטומית. התנגשות שומרת את שתי הטיוטות לפתרון מפורש בהגדרות.
 
-השרת שומר משימות וארכוב, גוף הערות עשיר ותמונות, תיקיות, מטא־נתונים וקבצים בגרסאות שאינן נדרסות, צירופים, תזכורות ופעולות על מופעים, רשימת מעקב ומיפויים והעדפות: שפה, שעונים, מיקום, לוח עברי, הזנות, רענון שבת ומניות נבחרות, בחירת לוחות ומצב סדר היום. העלאות מתחדשות לפי סשן והיסט ונבדקות ב־SHA-256 לפני השלמה; גם הורדות נבדקות. שינוי שם והעברה משנים מטא־נתונים ולא נתיב פיזי. ניתן להעלות עריכה חיצונית כגרסה חדשה.
+השרת שומר היסטוריית מצבי משימות, תאריכי רשומות, אנשי קשר ופעילויות CRM, הערות אנשי קשר, משימות וארכוב, גוף הערות עשיר ותמונות, תיקיות, מטא־נתונים וקבצים בגרסאות שאינן נדרסות, צירופים, תזכורות ופעולות על מופעים, רשימת מעקב ומיפויים והעדפות: שפה, שעונים, מיקום, לוח עברי, הזנות, רענון שבת ומניות נבחרות, בחירת לוחות ומצב סדר היום. העלאות מתחדשות לפי סשן והיסט ונבדקות ב־SHA-256 לפני השלמה; גם הורדות נבדקות. שינוי שם והעברה משנים מטא־נתונים ולא נתיב פיזי. ניתן להעלות עריכה חיצונית כגרסה חדשה.
 
 סשני התחברות נשמרים ב־`~/Library/Application Support/WorkCompanion/Sessions/` עם הרשאות לבעל החשבון בלבד (0700 לתיקייה ו־0600 לקבצים), בנפרד לכל מופע וללא גיבוי. סיסמאות אינן נשמרות. אסימוני הסשן מוגנים בהרשאות מערכת הקבצים במקום בהצפנה ובבקרת הגישה של Keychain, ולכן תהליכים אחרים הפועלים בשם אותו משתמש macOS יכולים לקרוא אותם. הפעלה ורענון סשן אינם ניגשים ל־Keychain. אם לא נשמר סשן פרטי, יש להתחבר פעם אחת בהגדרות. התנתקות מנקה את הסשן המקומי.
 
@@ -344,7 +364,7 @@ python3 scripts/check_translations.py
 python3 scripts/check_secrets.py --staged
 ```
 
-הבדיקות מכסות אחסון וסנכרון, שמירת הגדרות מלאה, קבצים, עיצוב הערות וייצוא Markdown, ארכוב משימות, חפיפות ושעון קיץ בסדר היום, RSS, הזדהות ואריזה. בדיקת התרגומים מאמתת התאמת מפתחות בחמש שפות, כפילויות, ערכים ריקים, מצייני פורמט והפניות ממשק קבועות. הבדיקות רצות מקומית; אין במאגר תהליכי GitHub Actions. תיעוד API זמין ב־`http://127.0.0.1:8787/docs`.
+הבדיקות מכסות אחסון וסנכרון, CRM והערות אנשי קשר עשירות, היסטוריית משימות, תאריכי רשומות, שמירת סשנים פרטית, חיפוש כללי, תאריכים עבריים, שמירת הגדרות מלאה, קבצים, עיצוב הערות וייצוא Markdown, ארכוב משימות, חפיפות ושעון קיץ בסדר היום, RSS, הזדהות ואריזה. בדיקת התרגומים מאמתת התאמת מפתחות בחמש שפות, כפילויות, ערכים ריקים, מצייני פורמט, הפניות ממשק קבועות, הודעות שרת וטקסט הרשאות לוח שנה מתורגם. הבדיקות רצות מקומית; אין במאגר תהליכי GitHub Actions. תיעוד API זמין ב־`http://127.0.0.1:8787/docs`.
 
 אין הפעלה אוטומטית בכניסה או עוזר התראות ברקע. סגירת החלון הראשי האחרון מסיימת את האפליקציה. macOS שולט בהתראות כשהיא סגורה; Mac ישן או כבוי אינו מבטיח חלון במועד. הלקוח מתזמן את 60 המופעים הקרובים בתוך 30 יום. אין פינוי אוטומטי של מטמון הקבצים. יש לבדוק הרשאות לוח, התראות, אפליקציות שיתוף, קריאות המסך והתקנה על Mac אחר במכשיר היעד. Notarization דורש אישורי Developer ID.
 

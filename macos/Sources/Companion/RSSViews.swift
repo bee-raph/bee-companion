@@ -48,7 +48,7 @@ struct RSSReaderView: View {
           }
         }
         ForEach(data.messages, id: \.self) {
-          Text($0).font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+          Text(L10n.message($0)).font(.caption).foregroundStyle(.secondary).padding(.horizontal)
         }
       }.frame(minWidth: 300, idealWidth: 400)
       if let pair = articles.first(where: { $0.1.id == selection }) {
@@ -246,7 +246,9 @@ struct FeedEditorSheet: View {
       feed.url = feed.url.trimmingCharacters(in: .whitespacesAndNewlines)
       feed.title = feed.title.trimmingCharacters(in: .whitespacesAndNewlines)
       try ReaderPreferences.validate([feed])
-      if feed.title.isEmpty { feed.title = URLComponents(string: feed.url)?.host ?? "RSS feed" }
+      if feed.title.isEmpty {
+        feed.title = URLComponents(string: feed.url)?.host ?? L10n.text("Untitled feed")
+      }
       onSave(feed)
       dismiss()
     } catch { self.error = error.localizedDescription }

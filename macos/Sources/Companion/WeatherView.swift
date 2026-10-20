@@ -52,7 +52,7 @@ struct WeatherView: View {
           HStack(spacing: 20) {
             Image(systemName: weather.symbol).font(.system(size: 38)).foregroundStyle(
               BeeTheme.accent)
-            Text(String(format: "%.0f°C", weather.temperature)).font(
+            Text(String(format: "%.0f°C", locale: L10n.locale, weather.temperature)).font(
               .system(size: 34, weight: .light)
             ).monospacedDigit()
             VStack(alignment: .leading, spacing: 5) {

@@ -108,7 +108,7 @@ struct ShabbatView: View {
                   HStack {
                     Image(systemName: weather.symbol).font(.system(size: 38 * scale))
                       .foregroundStyle(.yellow.opacity(0.85))
-                    Text(String(format: "%.0f°", weather.temperature)).font(
+                    Text(String(format: "%.0f°", locale: L10n.locale, weather.temperature)).font(
                       .system(size: 54 * scale, weight: .light))
                     Spacer()
                     VStack(alignment: .trailing) {
@@ -152,11 +152,16 @@ struct ShabbatView: View {
                   ForEach(data.quotes) { quote in
                     VStack(alignment: .leading, spacing: 5) {
                       Text(quote.symbol).font(.system(size: 17 * scale, weight: .semibold))
-                      Text(quote.price.map { String(format: "%.2f", $0) } ?? L10n.text("—")).font(
+                      Text(
+                        quote.price.map { String(format: "%.2f", locale: L10n.locale, $0) }
+                          ?? L10n.text("—")
+                      ).font(
                         .system(size: 27 * scale, weight: .medium, design: .rounded)
                       ).monospacedDigit()
                       Text(
-                        quote.changePercent.map { String(format: "%+.2f%%", $0) }
+                        quote.changePercent.map {
+                          String(format: "%+.2f%%", locale: L10n.locale, $0)
+                        }
                           ?? L10n.text("Unavailable")
                       ).font(.system(size: 17 * scale)).foregroundStyle(
                         (quote.changePercent ?? 0) >= 0 ? .mint : .orange)

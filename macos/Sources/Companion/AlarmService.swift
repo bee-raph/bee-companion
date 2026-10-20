@@ -191,7 +191,9 @@ struct Recurrence {
           Button(L10n.text("Dismiss")) { [weak self] in self?.finish(id) }.keyboardShortcut(
             .defaultAction)
         }
-      }.padding(24))
+      }.padding(24)
+        .environment(\.locale, L10n.language.locale)
+        .environment(\.layoutDirection, L10n.language.direction))
     windows[id] = window
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)

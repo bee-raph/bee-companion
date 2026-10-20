@@ -52,3 +52,35 @@ def test_detects_unlocalized_interface_label(tmp_path):
     assert any(
         "bypasses localization" in error for error in translations.check(tmp_path)
     )
+
+
+def test_detects_missing_helper_labels_and_backend_messages(tmp_path):
+    source, _, _ = fixture(tmp_path)
+    (source / "Screen.swift").write_text(
+        'BeeEmptyState(title: "Missing heading", detail: "Hello %@")'
+    )
+    backend = tmp_path / "backend/app"
+    backend.mkdir(parents=True)
+    (backend / "main.py").write_text(
+        'raise HTTPException(401, "Missing server message")'
+    )
+    errors = translations.check(tmp_path)
+    assert any("Missing heading" in error for error in errors)
+    assert any("Missing server message" in error for error in errors)
+
+
+def test_detects_missing_calendar_permission_translations(tmp_path):
+    import plistlib
+
+    fixture(tmp_path)
+    (tmp_path / "macos/Info.plist").write_bytes(
+        plistlib.dumps(
+            {
+                "CFBundleLocalizations": sorted(translations.LANGUAGES),
+                "NSCalendarsFullAccessUsageDescription": "Calendar access",
+            }
+        )
+    )
+    errors = translations.check(tmp_path)
+    assert len(errors) == 5
+    assert all("InfoPlist.strings" in error for error in errors)

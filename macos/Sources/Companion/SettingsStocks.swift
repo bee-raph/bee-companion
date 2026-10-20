@@ -46,12 +46,19 @@ struct StocksView: View {
         Text(item.title).lineLimit(1)
         Spacer()
         if let quote = quotes.first(where: { $0.symbol == item.body["symbol"] }) {
-          Text(quote.price.map { String(format: "%.4f", $0) } ?? L10n.text("—")).monospacedDigit()
-          Text(quote.change.map { String(format: "%+.4f", $0) } ?? L10n.text("—"))
-            .monospacedDigit()
-          Text(quote.changePercent.map { String(format: "%+.2f%%", $0) } ?? L10n.text("—"))
-            .foregroundStyle(
-              (quote.changePercent ?? 0) >= 0 ? .green : .red)
+          Text(
+            quote.price.map { String(format: "%.4f", locale: L10n.locale, $0) } ?? L10n.text("—")
+          ).monospacedDigit()
+          Text(
+            quote.change.map { String(format: "%+.4f", locale: L10n.locale, $0) } ?? L10n.text("—")
+          )
+          .monospacedDigit()
+          Text(
+            quote.changePercent.map { String(format: "%+.2f%%", locale: L10n.locale, $0) }
+              ?? L10n.text("—")
+          )
+          .foregroundStyle(
+            (quote.changePercent ?? 0) >= 0 ? .green : .red)
           VStack(alignment: .trailing) {
             Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? L10n.text("Unavailable"))
             if let error = quote.error { Text(L10n.message(error)) }
@@ -308,7 +315,7 @@ struct SettingsView: View {
               Divider()
               Text(
                 L10n.text("Server version\n")
-                  + (conflict.server.map { Sharing.plain($0) } ?? "Deleted")
+                  + (conflict.server.map { Sharing.plain($0) } ?? L10n.text("Deleted"))
               )
               .textSelection(.enabled)
             }

@@ -28,7 +28,7 @@ struct Item: Identifiable, Codable, Equatable, Sendable {
   var revision: Int = 0
   var body: [String: String] = [:]
   var deleted = false
-  var title: String { body["title"] ?? "Untitled" }
+  var title: String { body["title"] ?? L10n.text("Untitled") }
   var archived: Bool { body["archived"] == "true" || (kind == "tasks" && body["status"] == "Done") }
   var date: Date? { body["date"].flatMap { ItemTimestamp.date($0) } }
 }

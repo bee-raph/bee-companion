@@ -116,7 +116,7 @@ actor API {
       let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
       throw CompanionError.message(
         payload?["detail"] as? String
-          ?? String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
+          ?? String(data: data, encoding: .utf8) ?? L10n.format("Server error %d", http.statusCode))
     }
     return data
   }

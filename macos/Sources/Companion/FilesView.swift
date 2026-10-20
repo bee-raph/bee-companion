@@ -21,7 +21,9 @@ struct FilesView: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
         Button(L10n.text("Root")) { parent = "" }
-        if !parent.isEmpty { Text(model.items.first { $0.id == parent }?.title ?? "Folder") }
+        if !parent.isEmpty {
+          Text(model.items.first { $0.id == parent }?.title ?? L10n.text("Folder"))
+        }
         Spacer()
         Toggle(L10n.text("Trash"), isOn: $trash)
 
@@ -117,7 +119,7 @@ struct FilesView: View {
               var copy = item
               copy.id = UUID().uuidString.lowercased()
               copy.revision = 0
-              copy.body["title"] = item.title + " copy"
+              copy.body["title"] = L10n.format("%@ copy", item.title)
               if item.kind == "files" {
                 Task {
                   do {
