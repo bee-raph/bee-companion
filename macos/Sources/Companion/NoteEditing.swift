@@ -198,6 +198,7 @@ struct NoteTextEditor: NSViewRepresentable {
   var editor: NoteEditing
   var commit: ((String, String, String) -> Void)? = nil
   var initialMarkdown: String? = nil
+  var initialDocument: NSAttributedString? = nil
   func makeCoordinator() -> Coordinator { Coordinator(self) }
   func makeNSView(context: Context) -> NSScrollView {
     let scroll = NSTextView.scrollableTextView()
@@ -209,7 +210,9 @@ struct NoteTextEditor: NSViewRepresentable {
     view.textContainerInset = NSSize(width: 10, height: 10)
     view.delegate = context.coordinator
     context.coordinator.textView = view
-    if rich, let value = NoteDocument.decode(rtf: rtf, rtfd: rtfd) {
+    if let initialDocument {
+      view.textStorage?.setAttributedString(initialDocument)
+    } else if rich, let value = NoteDocument.decode(rtf: rtf, rtfd: rtfd) {
       view.textStorage?.setAttributedString(value)
     } else if let initialMarkdown {
       view.textStorage?.setAttributedString(NoteMarkdown.importText(initialMarkdown))

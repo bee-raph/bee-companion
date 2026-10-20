@@ -7,10 +7,36 @@ struct CRMPhone {
   let formatted: String
   let e164: String
   let flag: String
-  private static let utility = PhoneNumberUtility()
-  static func parse(_ input: String) -> CRMPhone? {
+  private static let parser = CRMPhoneParser()
+  static func parse(_ input: String) -> CRMPhone? { parser.parse(input) }
+  var whatsapp: URL? { URL(string: "https://wa.me/" + e164.dropFirst()) }
+  var telephone: URL? { URL(string: "tel:" + e164) }
+}
+
+final class CRMPhoneParser {
+  private final class Result: NSObject {
+    let phone: CRMPhone?
+    init(_ phone: CRMPhone?) { self.phone = phone }
+  }
+  private let utility = PhoneNumberUtility()
+  private let lock = NSLock()
+  private let cache = NSCache<NSString, Result>()
+  init() { cache.countLimit = 512 }
+
+  func parse(_ input: String) -> CRMPhone? {
     let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard value.hasPrefix("+"), let number = try? utility.parse(value) else { return nil }
+    guard value.hasPrefix("+") else { return nil }
+    lock.lock()
+    defer { lock.unlock() }
+    if let cached = cache.object(forKey: value as NSString) { return cached.phone }
+    let result = format(value)
+    cache.setObject(Result(result), forKey: value as NSString)
+    return result
+  }
+
+  private func format(_ value: String) -> CRMPhone? {
+    // Explicit international numbers never need the system Contacts region lookup.
+    guard let number = try? utility.parse(value, withRegion: "US") else { return nil }
     let region = utility.getRegionCode(of: number) ?? "001"
     let flag =
       region.count == 2
@@ -23,8 +49,6 @@ struct CRMPhone {
       formatted: utility.format(number, toType: .international),
       e164: utility.format(number, toType: .e164), flag: flag)
   }
-  var whatsapp: URL? { URL(string: "https://wa.me/" + e164.dropFirst()) }
-  var telephone: URL? { URL(string: "tel:" + e164) }
 }
 
 enum CRM {
@@ -61,7 +85,10 @@ struct CRMView: View {
   var contacts: [Item] {
     model.items.filter {
       !$0.deleted && $0.kind == "crm_contacts"
-        && (query.isEmpty || $0.body.values.contains { $0.localizedCaseInsensitiveContains(query) })
+        && (query.isEmpty
+          || $0.body.contains { key, value in
+            !["rtf", "rtfd"].contains(key) && value.localizedCaseInsensitiveContains(query)
+          })
     }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
   }
   var body: some View {
@@ -121,7 +148,8 @@ struct CRMContactDetail: View {
     model.items.filter {
       !$0.deleted && $0.kind == "crm_actions" && $0.body["contactID"] == contact.id
     }
-    .sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+    .map { ($0, $0.date ?? .distantPast) }
+    .sorted { $0.1 > $1.1 }.map { $0.0 }
   }
   var body: some View {
     ScrollView {
@@ -185,33 +213,37 @@ struct CRMContactDetail: View {
               ])
           }
         }
-        ForEach(actions) { action in
-          VStack(alignment: .leading, spacing: 8) {
-            HStack {
-              Text(action.title).font(.headline)
-              Spacer()
-              Button(L10n.text("Edit")) { actionEditor = action }
-              Button(role: .destructive) {
-                removeAction(action)
-              } label: {
-                Image(systemName: "trash")
+        LazyVStack(alignment: .leading, spacing: 16) {
+          ForEach(actions) { action in
+            VStack(alignment: .leading, spacing: 8) {
+              HStack {
+                Text(action.title).font(.headline)
+                Spacer()
+                Button(L10n.text("Edit")) { actionEditor = action }
+                Button(role: .destructive) {
+                  removeAction(action)
+                } label: {
+                  Image(systemName: "trash")
+                }
+                .help(L10n.text("Delete action"))
               }
-              .help(L10n.text("Delete action"))
-            }
-            Text(L10n.text(action.body["actionType"] ?? "Phone call")).foregroundStyle(.secondary)
-            if let date = action.date { Text(date, format: .dateTime).foregroundStyle(.secondary) }
-            Text(action.body["description"] ?? "").textSelection(.enabled)
-            if let reminder = action.body["reminderDate"],
-              let date = ISO8601DateFormatter().date(from: reminder)
-            {
-              Label {
-                Text(date, format: .dateTime)
-              } icon: {
-                Image(systemName: "alarm")
+              Text(L10n.text(action.body["actionType"] ?? "Phone call")).foregroundStyle(.secondary)
+              if let date = action.date {
+                Text(date, format: .dateTime).foregroundStyle(.secondary)
               }
-            }
-            CRMAttachments(owner: action)
-          }.padding().background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+              Text(action.body["description"] ?? "").textSelection(.enabled)
+              if let reminder = action.body["reminderDate"],
+                let date = ISO8601DateFormatter().date(from: reminder)
+              {
+                Label {
+                  Text(date, format: .dateTime)
+                } icon: {
+                  Image(systemName: "alarm")
+                }
+              }
+              CRMAttachments(owner: action)
+            }.padding().background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+          }
         }
       }.padding(24)
     }

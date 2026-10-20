@@ -5,7 +5,7 @@ import XCTest
 @testable import Companion
 
 final class CRMTests: XCTestCase {
-  @MainActor func testContactRichNotePreservesFormattingImagesAndOneRecord() throws {
+  @MainActor func testContactRichNotePreservesFormattingImagesAndOneRecord() async throws {
     let bitmap = try XCTUnwrap(
       NSBitmapImageRep(
         bitmapDataPlanes: nil, pixelsWide: 1, pixelsHigh: 1, bitsPerSample: 8,
@@ -36,8 +36,8 @@ final class CRMTests: XCTestCase {
     let saved = try XCTUnwrap(try local.all().first)
     XCTAssertEqual(saved.id, contact.id)
     XCTAssertEqual(saved.body["emails"], contact.body["emails"])
-    let reopened = try XCTUnwrap(
-      NoteDocument.decode(rtf: saved.body["rtf"] ?? "", rtfd: saved.body["rtfd"] ?? ""))
+    let loaded = await CRMLoadedNote.load(saved)
+    let reopened = loaded.document
     XCTAssertEqual(reopened.string, document.string)
     let font = try XCTUnwrap(reopened.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
     XCTAssertEqual(font.pointSize, 24)
@@ -70,6 +70,35 @@ final class CRMTests: XCTestCase {
     XCTAssertNil(merged.body["notes"])
     let cleared = CRMNoteDocument.updating(latest, text: "", rtf: "", rtfd: "")
     XCTAssertEqual(CRMNoteDocument.text(cleared), "")
+  }
+
+  func testRepeatedContactPhoneFormattingPerformance() throws {
+    let numbers = ["+33 6 89 01 73 83", "+44 20 7031 3000", "+1 416 555 0123", "+972 50 234 5678"]
+    for number in numbers { XCTAssertNotNil(CRMPhone.parse(number), number) }
+    measure {
+      for _ in 0..<250 {
+        for number in numbers { _ = CRMPhone.parse(number) }
+      }
+    }
+  }
+
+  @MainActor func testContactNoteBackgroundLoadPreservesFormattingAndFallback() async throws {
+    let source = NSAttributedString(
+      string: "Contact note", attributes: [.font: NSFont.boldSystemFont(ofSize: 22)])
+    let encoded = try NoteSnapshot(source, rich: true).encode()
+    let contact = Item(
+      kind: "crm_contacts", body: ["text": encoded.text, "rtf": encoded.rtf, "rtfd": encoded.rtfd])
+    let loaded = await CRMLoadedNote.load(contact)
+    XCTAssertEqual(loaded.document.string, source.string)
+    let font = try XCTUnwrap(
+      loaded.document.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+    XCTAssertEqual(font.pointSize, 22)
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+    let legacy = await CRMLoadedNote.load(
+      Item(kind: "crm_contacts", body: ["notes": "Legacy note"]))
+    XCTAssertEqual(legacy.document.string, "Legacy note")
+    let empty = await CRMLoadedNote.load(Item(kind: "crm_contacts"))
+    XCTAssertEqual(empty.document.length, 0)
   }
 
   func testInternationalNumbersAndLinks() throws {
