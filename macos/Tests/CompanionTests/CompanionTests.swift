@@ -179,3 +179,48 @@ final class CompanionTests: XCTestCase {
     XCTAssertEqual(ReaderPreferences.refreshSeconds(["shabbatRefreshSeconds": "0"]), 60)
   }
 }
+
+final class LocalizationTests: XCTestCase {
+  func testLanguagesAndCatalog() throws {
+    XCTAssertEqual(AppLanguage.resolve(nil), .english)
+    XCTAssertEqual(AppLanguage.resolve("unknown"), .english)
+    XCTAssertEqual(AppLanguage.hebrew.direction, .rightToLeft)
+    let english = try XCTUnwrap(L10n.catalog["en"])
+    XCTAssertGreaterThan(english.count, 250)
+    let format = try NSRegularExpression(pattern: "%[-+0-9.]*[@df]|%%")
+    func placeholders(_ value: String) -> [String] {
+      format.matches(in: value, range: NSRange(value.startIndex..., in: value)).map {
+        String(value[Range($0.range, in: value)!])
+      }
+    }
+    for language in AppLanguage.allCases {
+      let translated = try XCTUnwrap(L10n.catalog[language.rawValue])
+      XCTAssertEqual(Set(english.keys), Set(translated.keys))
+      for (key, value) in translated {
+        XCTAssertFalse(value.isEmpty, key)
+        XCTAssertEqual(placeholders(key), placeholders(value), "\(language.rawValue): \(key)")
+      }
+    }
+    XCTAssertEqual(L10n.text("Settings", language: .french), "Réglages")
+  }
+  func testLanguageSurvivesOfflineStoreAndIncomingSync() throws {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString + ".sqlite")
+    let local = try LocalStore(url: url)
+    let item = Item(
+      id: "00000000-0000-0000-0000-000000000001", kind: "user_settings", body: ["language": "he"])
+    try local.save(item)
+    XCTAssertEqual(try local.pending().first?.body["language"], "he")
+    let reopened = try LocalStore(url: url)
+    XCTAssertEqual(try reopened.all().first?.body["language"], "he")
+    let operation = try XCTUnwrap(local.nextMutation())
+    var server = item
+    server.revision = 1
+    try local.accept(.init(operationID: operation.operationID, status: "applied", record: server))
+    server.body["language"] = "fr"
+    server.revision = 2
+    try local.apply(.init(changes: [server], cursor: 2, hasMore: false))
+    XCTAssertEqual(try local.all().first?.body["language"], "fr")
+    XCTAssertEqual(try local.pending().count, 0)
+  }
+}

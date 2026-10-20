@@ -33,8 +33,10 @@ struct BeeSectionHeading: View {
         .foregroundStyle(color).frame(width: 34, height: 34)
         .background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
       VStack(alignment: .leading, spacing: 3) {
-        Text(title).font(.system(size: 16, weight: .semibold))
-        if !subtitle.isEmpty { Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary) }
+        Text(L10n.text(title)).font(.system(size: 16, weight: .semibold))
+        if !subtitle.isEmpty {
+          Text(L10n.text(subtitle)).font(.system(size: 12)).foregroundStyle(.secondary)
+        }
       }
     }
   }
@@ -49,7 +51,8 @@ struct BeeMetric: View {
     BeeCard {
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 12) {
-          Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+          Text(L10n.text(title)).font(.system(size: 12, weight: .medium)).foregroundStyle(
+            .secondary)
           Text(value).font(.system(size: 30, weight: .semibold, design: .rounded)).monospacedDigit()
         }
         Spacer()
@@ -70,8 +73,8 @@ struct BeeEmptyState: View {
       Image(systemName: symbol).font(.system(size: 30, weight: .light))
         .foregroundStyle(BeeTheme.accent).frame(width: 76, height: 76)
         .background(BeeTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 23))
-      Text(title).font(.system(size: 19, weight: .semibold))
-      Text(detail).font(.system(size: 13)).foregroundStyle(.secondary)
+      Text(L10n.text(title)).font(.system(size: 19, weight: .semibold))
+      Text(L10n.text(detail)).font(.system(size: 13)).foregroundStyle(.secondary)
         .multilineTextAlignment(.center).frame(maxWidth: 270)
     }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(32)
   }
@@ -82,13 +85,14 @@ enum BeeDisplayTime {
     let fractional = ISO8601DateFormatter()
     fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     if let date = fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value) {
-      return date.formatted(date: .abbreviated, time: .shortened)
+      return date.formatted(
+        .dateTime.year().month(.abbreviated).day().hour().minute().locale(L10n.locale))
     }
     let dateOnly = DateFormatter()
     dateOnly.locale = Locale(identifier: "en_US_POSIX")
     dateOnly.dateFormat = "yyyy-MM-dd"
     if let date = dateOnly.date(from: value) {
-      return date.formatted(date: .abbreviated, time: .omitted)
+      return date.formatted(.dateTime.year().month(.abbreviated).day().locale(L10n.locale))
     }
     return value
   }

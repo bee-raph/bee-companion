@@ -43,6 +43,8 @@ def valid_url(value):
 
 def validate_settings(body):
     try:
+        if body.get("language", "en") not in {"en", "he", "fr", "ru", "es"}:
+            raise ValueError("Unsupported interface language")
         feeds = json.loads(body.get("rssFeeds", "[]"))
         if not isinstance(feeds, list) or len(feeds) > 3:
             raise ValueError("Configure at most three RSS feeds")

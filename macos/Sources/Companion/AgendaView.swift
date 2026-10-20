@@ -113,12 +113,14 @@ struct AgendaView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       HStack {
-        DatePicker("Date", selection: $date, displayedComponents: .date)
-        Picker("Range", selection: $range) {
-          ForEach(["Day", "Week", "Month"], id: \.self) { Text($0) }
+        DatePicker(L10n.text("Date"), selection: $date, displayedComponents: .date)
+        Picker(L10n.text("Range"), selection: $range) {
+          ForEach(["Day", "Week", "Month"], id: \.self) { Text(L10n.text($0)).tag($0) }
         }.pickerStyle(.segmented)
         if agenda.access != .fullAccess {
-          Button(agenda.requesting ? "Requesting access…" : "Enable Apple Calendar") {
+          Button(
+            agenda.requesting ? L10n.text("Requesting access…") : L10n.text("Enable Apple Calendar")
+          ) {
             Task { await agenda.enable(date: start, days: days) }
           }.disabled(agenda.requesting)
         }
@@ -127,21 +129,22 @@ struct AgendaView: View {
         AgendaGrid(date: $date, range: range, events: agenda.events, items: model.items).padding(
           .horizontal)
       }
-      Text(agenda.message).font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+      Text(L10n.message(agenda.message)).font(.caption).foregroundStyle(.secondary).padding(
+        .horizontal)
       Menu {
         if agenda.calendars.isEmpty {
           if agenda.access == .fullAccess {
-            Text("No calendars found").disabled(true)
-            Button("Open Calendar") { NSWorkspace.shared.open(URL(string: "ical://")!) }
+            Text(L10n.text("No calendars found")).disabled(true)
+            Button(L10n.text("Open Calendar")) { NSWorkspace.shared.open(URL(string: "ical://")!) }
           } else if agenda.access == .denied || agenda.access == .restricted {
-            Text("Calendar access is unavailable").disabled(true)
-            Button("Open System Settings") {
+            Text(L10n.text("Calendar access is unavailable")).disabled(true)
+            Button(L10n.text("Open System Settings")) {
               NSWorkspace.shared.open(
                 URL(fileURLWithPath: "/System/Applications/System Settings.app"))
             }
           } else {
-            Text("Calendar access is required").disabled(true)
-            Button("Enable Apple Calendar") {
+            Text(L10n.text("Calendar access is required")).disabled(true)
+            Button(L10n.text("Enable Apple Calendar")) {
               Task { await agenda.enable(date: start, days: days) }
             }.disabled(agenda.requesting)
           }
@@ -156,16 +159,16 @@ struct AgendaView: View {
             }
           }
           Divider()
-          Button("Select all") { agenda.selectAll(true, date: start, days: days) }
-          Button("Deselect all") { agenda.selectAll(false, date: start, days: days) }
+          Button(L10n.text("Select all")) { agenda.selectAll(true, date: start, days: days) }
+          Button(L10n.text("Deselect all")) { agenda.selectAll(false, date: start, days: days) }
         }
         Divider()
-        Button("Refresh calendars") { agenda.refresh(start, days: days) }
+        Button(L10n.text("Refresh calendars")) { agenda.refresh(start, days: days) }
       } label: {
         Label(
           agenda.calendars.isEmpty
-            ? "Choose calendars"
-            : "Calendars (\(agenda.selectedIDs.count) of \(agenda.calendars.count))",
+            ? L10n.text("Choose calendars")
+            : L10n.format("Calendars (%d of %d)", agenda.selectedIDs.count, agenda.calendars.count),
           systemImage: "calendar.badge.checkmark")
       }.padding(.horizontal)
       List {
@@ -173,11 +176,11 @@ struct AgendaView: View {
           HStack {
             Circle().fill(Color(nsColor: event.calendar.color)).frame(width: 8)
             VStack(alignment: .leading) {
-              Text(event.title ?? "Event").font(.headline)
+              Text(event.title ?? L10n.text("Event")).font(.headline)
               Text(event.startDate.formatted() + " · " + event.calendar.title).font(.caption)
             }
             Spacer()
-            Button("Open Calendar") { NSWorkspace.shared.open(URL(string: "ical://")!) }
+            Button(L10n.text("Open Calendar")) { NSWorkspace.shared.open(URL(string: "ical://")!) }
           }
         }
         ForEach(
@@ -214,6 +217,7 @@ struct HebrewCalendarView: View {
   @State var zmanim: [String: String] = [:]
   var hebrewDate: String {
     let format = DateFormatter()
+    format.locale = L10n.locale
     format.calendar = Calendar(identifier: .hebrew)
     format.locale = Locale(identifier: "he_IL")
     format.dateStyle = .full
@@ -224,9 +228,9 @@ struct HebrewCalendarView: View {
       HStack {
         Text(hebrewDate).font(.title2)
         Spacer()
-        Button("Refresh calendar") { Task { await load() } }
+        Button(L10n.text("Refresh calendar")) { Task { await load() } }
       }
-      Text(message).font(.caption).foregroundStyle(.secondary)
+      Text(L10n.message(message)).font(.caption).foregroundStyle(.secondary)
       if !zmanim.isEmpty {
         ZmanimStrip(
           times: zmanim, followNext: followNextZman,
@@ -324,20 +328,22 @@ struct TodayView: View {
             Text(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased()).font(
               .system(size: 10, weight: .semibold)
             ).tracking(1.7).foregroundStyle(.secondary)
-            Text(greeting).font(.system(size: 34, weight: .semibold))
-            Text("A clear view of everything that matters today.").font(.system(size: 14))
-              .foregroundStyle(.secondary)
+            Text(L10n.text(greeting)).font(.system(size: 34, weight: .semibold))
+            Text(L10n.text("A clear view of everything that matters today.")).font(
+              .system(size: 14)
+            )
+            .foregroundStyle(.secondary)
           }
           Spacer()
           Button {
             shabbat.show(model)
           } label: {
-            Label("Shabbat mode", systemImage: "moon.stars")
+            Label(L10n.text("Shabbat mode"), systemImage: "moon.stars")
           }.buttonStyle(.bordered).controlSize(.large)
           Button {
             _ = model.add("tasks")
           } label: {
-            Label("New task", systemImage: "plus")
+            Label(L10n.text("New task"), systemImage: "plus")
           }.buttonStyle(.borderedProminent).controlSize(.large)
         }.padding(.bottom, 4)
         HStack(spacing: 16) {
@@ -367,8 +373,9 @@ struct TodayView: View {
                 VStack(spacing: 10) {
                   Image(systemName: "checkmark.seal").font(.system(size: 28, weight: .light))
                     .foregroundStyle(BeeTheme.mint)
-                  Text("A little breathing room").font(.system(size: 14, weight: .medium))
-                  Text("Add a due date or reminder and it will appear here.").font(
+                  Text(L10n.text("A little breathing room")).font(
+                    .system(size: 14, weight: .medium))
+                  Text(L10n.text("Add a due date or reminder and it will appear here.")).font(
                     .system(size: 12)
                   ).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }.frame(maxWidth: .infinity).padding(.vertical, 30)
@@ -450,12 +457,14 @@ struct WorldClocksView: View {
   }
   func formatted(_ date: Date, _ zone: TimeZone) -> String {
     let f = DateFormatter()
+    f.locale = L10n.locale
     f.timeZone = zone
     f.dateFormat = "HH:mm"
     return f.string(from: date)
   }
   func dayLabel(_ date: Date, _ zone: TimeZone) -> String {
     let f = DateFormatter()
+    f.locale = L10n.locale
     f.timeZone = zone
     f.dateFormat = "EEE, d MMM"
     return f.string(from: date)
@@ -502,7 +511,7 @@ struct AgendaGrid: View {
                 !$0.deleted && !$0.archived
                   && $0.date.map { Calendar.current.isDate($0, inSameDayAs: day) } == true
               }.count
-            Text(count == 0 ? " " : "\(count) items").font(.caption2)
+            Text(count == 0 ? " " : L10n.format("%d items", count)).font(.caption2)
           }.frame(maxWidth: .infinity).padding(5)
             .background(
               Calendar.current.isDate(date, inSameDayAs: day)

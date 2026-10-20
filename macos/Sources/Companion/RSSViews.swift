@@ -17,7 +17,7 @@ struct RSSReaderView: View {
             title: "Your reading room", subtitle: "Up to three RSS or Atom feeds",
             symbol: "dot.radiowaves.left.and.right")
           Spacer()
-          Button("Refresh") {
+          Button(L10n.text("Refresh")) {
             Task {
               await model.sync()
               await data.refresh(model)
@@ -32,8 +32,10 @@ struct RSSReaderView: View {
         } else {
           List(selection: $selection) {
             ForEach(data.feeds) { feed in
-              SwiftUI.Section(feed.title + (feed.stale ? " · saved" : "")) {
-                if let error = feed.error { Text(error).font(.caption).foregroundStyle(.secondary) }
+              SwiftUI.Section(feed.title + (feed.stale ? L10n.text(" · saved") : "")) {
+                if let error = feed.error {
+                  Text(L10n.message(error)).font(.caption).foregroundStyle(.secondary)
+                }
                 ForEach(feed.articles) { article in
                   VStack(alignment: .leading, spacing: 5) {
                     Text(article.title).font(.headline)
@@ -93,33 +95,38 @@ struct ReadingSettingsView: View {
   @State var editingFeed: FeedConfiguration?
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      Text("RSS & Shabbat mode").font(.title2)
+      Text(L10n.text("RSS & Shabbat mode")).font(.title2)
       Text(
-        "Configure up to three public RSS or Atom feeds. These preferences sync with your backend."
+        L10n.text(
+          "Configure up to three public RSS or Atom feeds. These preferences sync with your backend."
+        )
       ).font(.caption).foregroundStyle(.secondary)
       ForEach(feeds) { feed in
         HStack {
           VStack(alignment: .leading, spacing: 4) {
-            Text(feed.title.isEmpty ? "Untitled feed" : feed.title).font(.headline)
+            Text(feed.title.isEmpty ? L10n.text("Untitled feed") : feed.title).font(.headline)
             Text(feed.url).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
           }
           Spacer()
-          Button("Edit") { editingFeed = feed }
-          Button("Remove", role: .destructive) {
+          Button(L10n.text("Edit")) { editingFeed = feed }
+          Button(L10n.text("Remove"), role: .destructive) {
             feeds.removeAll { $0.id == feed.id }
             saveFeeds()
           }
         }.padding(.vertical, 6)
       }
-      Button("Add feed", systemImage: "plus") { editingFeed = FeedConfiguration() }.disabled(
-        feeds.count >= 3)
-      Picker("Automatic refresh", selection: $refresh) {
-        ForEach([60, 120, 300, 600, 900, 1800, 3600], id: \.self) { Text("\($0 / 60) min").tag($0) }
+      Button(L10n.text("Add feed"), systemImage: "plus") { editingFeed = FeedConfiguration() }
+        .disabled(
+          feeds.count >= 3)
+      Picker(L10n.text("Automatic refresh"), selection: $refresh) {
+        ForEach([60, 120, 300, 600, 900, 1800, 3600], id: \.self) {
+          Text(L10n.format("%d min", $0 / 60)).tag($0)
+        }
       }
-      Picker("Rotate headlines every", selection: $rotation) {
-        ForEach([10, 15, 30, 60, 120], id: \.self) { Text("\($0) seconds").tag($0) }
+      Picker(L10n.text("Rotate headlines every"), selection: $rotation) {
+        ForEach([10, 15, 30, 60, 120], id: \.self) { Text(L10n.format("%d seconds", $0)).tag($0) }
       }
-      Text("Stocks on the Shabbat screen (up to six)").font(.headline)
+      Text(L10n.text("Stocks on the Shabbat screen (up to six)")).font(.headline)
       ForEach(model.items.filter { $0.kind == "watchlist_items" && !$0.deleted }) { item in
         Toggle(
           item.title + " · " + (item.body["symbol"] ?? ""),
@@ -135,10 +142,12 @@ struct ReadingSettingsView: View {
         ).disabled(!stocks.contains(item.id) && stocks.count >= 6)
       }
       Text(
-        "Weather and zmanim use the city coordinates and time zone above. ⌘⇧S opens Shabbat mode; Esc exits. The display stays awake while it is open."
+        L10n.text(
+          "Weather and zmanim use the city coordinates and time zone above. ⌘⇧S opens Shabbat mode; Esc exits. The display stays awake while it is open."
+        )
       ).font(.caption).foregroundStyle(.secondary)
-      Button("Save reader & Shabbat settings") { save() }.buttonStyle(.borderedProminent)
-      Text(message).font(.caption).foregroundStyle(.secondary)
+      Button(L10n.text("Save reader & Shabbat settings")) { save() }.buttonStyle(.borderedProminent)
+      Text(L10n.message(message)).font(.caption).foregroundStyle(.secondary)
     }.onAppear { load() }.onChange(of: model.configuration?.instanceID) { _, _ in load() }
       .sheet(item: $editingFeed) { feed in
         FeedEditorSheet(feed: feed) { updated in
@@ -203,21 +212,26 @@ struct FeedEditorSheet: View {
       BeeSectionHeading(
         title: "RSS feed", subtitle: "Enter a name and the RSS or Atom URL", symbol: "newspaper")
       VStack(alignment: .leading, spacing: 7) {
-        Text("Feed name").font(.headline)
-        TextField("For example, Daily news", text: $feed.title).textFieldStyle(.roundedBorder)
-          .focused($focused)
+        Text(L10n.text("Feed name")).font(.headline)
+        TextField(L10n.text("For example, Daily news"), text: $feed.title).textFieldStyle(
+          .roundedBorder
+        )
+        .focused($focused)
       }
       VStack(alignment: .leading, spacing: 7) {
-        Text("Feed URL").font(.headline)
-        TextField("https://example.com/feed.xml", text: $feed.url).textFieldStyle(.roundedBorder)
-        Text("Use the feed address, rather than the publication’s homepage.").font(.caption)
-          .foregroundStyle(.secondary)
+        Text(L10n.text("Feed URL")).font(.headline)
+        TextField(L10n.text("https://example.com/feed.xml"), text: $feed.url).textFieldStyle(
+          .roundedBorder)
+        Text(L10n.text("Use the feed address, rather than the publication’s homepage.")).font(
+          .caption
+        )
+        .foregroundStyle(.secondary)
       }
-      if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
+      if !error.isEmpty { Text(L10n.message(error)).font(.caption).foregroundStyle(.red) }
       HStack {
         Spacer()
-        Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-        Button("Save feed") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(
+        Button(L10n.text("Cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+        Button(L10n.text("Save feed")) { save() }.buttonStyle(.borderedProminent).keyboardShortcut(
           .defaultAction)
       }
     }.padding(28).frame(width: 520).onAppear { focused = true }

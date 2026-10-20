@@ -20,62 +20,63 @@ struct FilesView: View {
   var body: some View {
     VStack(alignment: .leading) {
       HStack {
-        Button("Root") { parent = "" }
+        Button(L10n.text("Root")) { parent = "" }
         if !parent.isEmpty { Text(model.items.first { $0.id == parent }?.title ?? "Folder") }
         Spacer()
-        Toggle("Trash", isOn: $trash)
-        Button("New folder") {
+        Toggle(L10n.text("Trash"), isOn: $trash)
+        Button(L10n.text("New folder")) {
           let folder = Item(kind: "folders", body: ["title": "New folder", "parent": parent])
           model.save(folder)
           selected = folder.id
           name = folder.title
         }
-        Button("Upload") { model.importFile(parent: parent) }
+        Button(L10n.text("Upload")) { model.importFile(parent: parent) }
       }.padding()
       Table(rows, selection: $selected) {
-        TableColumn("Name") { item in
+        TableColumn(L10n.text("Name")) { item in
           Label(item.title, systemImage: item.kind == "folders" ? "folder" : "doc").onTapGesture(
             count: 2
           ) { if item.kind == "folders" { parent = item.id } else { model.openFile(item) } }
         }
-        TableColumn("Size") {
+        TableColumn(L10n.text("Size")) {
           Text(
             $0.body["size"].flatMap(Int64.init).map {
               ByteCountFormatter.string(fromByteCount: $0, countStyle: .file)
-            } ?? "—")
+            } ?? L10n.text("—"))
         }
-        TableColumn("Modified") { item in
-          Text(item.body["modified"].map(BeeDisplayTime.timestamp) ?? "—").foregroundStyle(
-            .secondary)
+        TableColumn(L10n.text("Modified")) { item in
+          Text(item.body["modified"].map(BeeDisplayTime.timestamp) ?? L10n.text("—"))
+            .foregroundStyle(
+              .secondary)
         }
-        TableColumn("Availability") { item in
+        TableColumn(L10n.text("Availability")) { item in
           Text(
             item.body["uploadPending"] == "true"
-              ? "Upload pending"
+              ? L10n.text("Upload pending")
               : FileManager.default.fileExists(
                 atPath: model.cache.appendingPathComponent(item.id).path)
-                ? "On this Mac" : "On server")
+                ? L10n.text("On this Mac") : L10n.text("On server"))
         }
       }
       if let item = model.items.first(where: { $0.id == selected }) {
         VStack(alignment: .leading) {
           HStack {
-            TextField("Name", text: $name)
-            Button("Rename") {
+            TextField(L10n.text("Name"), text: $name)
+            Button(L10n.text("Rename")) {
               var updated = item
               updated.body["title"] = name
               model.save(updated)
             }.disabled(name.isEmpty || name.contains("/") || name == "..")
           }
           HStack {
-            Picker("Move to", selection: $moveTo) {
-              Text("Root").tag("")
+            Picker(L10n.text("Move to"), selection: $moveTo) {
+              Text(L10n.text("Root")).tag("")
               ForEach(
                 model.items.filter { $0.kind == "folders" && !$0.deleted && $0.id != item.id }
               ) { Text($0.title).tag($0.id) }
             }
-            Button("Move") { move(item) }
-            Button("Duplicate") {
+            Button(L10n.text("Move")) { move(item) }
+            Button(L10n.text("Duplicate")) {
               var copy = item
               copy.id = UUID().uuidString.lowercased()
               copy.revision = 0
@@ -91,24 +92,26 @@ struct FilesView: View {
                 model.save(copy)
               }
             }
-            Button(trash ? "Restore" : "Trash") {
+            Button(trash ? L10n.text("Restore") : L10n.text("Trash")) {
               var copy = item
               copy.deleted.toggle()
               model.save(copy)
             }
           }
-          if trash { Button("Delete permanently", role: .destructive) { model.purge(item) } }
+          if trash {
+            Button(L10n.text("Delete permanently"), role: .destructive) { model.purge(item) }
+          }
           if item.kind == "files" {
             if let progress = model.transferProgress[item.id], progress < 1 {
               HStack {
                 ProgressView(value: progress)
-                Button("Cancel transfer") { model.transfers[item.id]?.cancel() }
+                Button(L10n.text("Cancel transfer")) { model.transfers[item.id]?.cancel() }
               }
             }
             HStack {
-              Button("Open") { model.openFile(item) }
-              Button("Download") { model.openFile(item, export: true) }
-              Button("Quick Look") {
+              Button(L10n.text("Open")) { model.openFile(item) }
+              Button(L10n.text("Download")) { model.openFile(item, export: true) }
+              Button(L10n.text("Quick Look")) {
                 Task {
                   do {
                     let url = try await model.localFile(item)
@@ -119,12 +122,12 @@ struct FilesView: View {
                   } catch { model.error = error.localizedDescription }
                 }
               }
-              Button("Share file") { share(item) }
-              Button("LocalSend") { share(item, localSend: true) }
-              Button("Retry upload") { model.retryUpload(item) }.disabled(
+              Button(L10n.text("Share file")) { share(item) }
+              Button(L10n.text("LocalSend")) { share(item, localSend: true) }
+              Button(L10n.text("Retry upload")) { model.retryUpload(item) }.disabled(
                 item.body["uploadPending"] != "true")
               Toggle(
-                "Keep offline",
+                L10n.text("Keep offline"),
                 isOn: Binding(
                   get: { item.body["pinned"] == "true" },
                   set: { value in

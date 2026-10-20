@@ -10,6 +10,10 @@ Bee Companion is a **native macOS application for one user**, combining everyday
 
 ## Features
 
+### Interface language
+
+Choose **Settings → Language**: English (default), Hebrew, French, Russian, or Spanish. The interface changes immediately; Hebrew uses right-to-left layout. This preference belongs to the active instance and syncs with the backend as `user_settings.language` (`en`, `he`, `fr`, `ru`, `es`). Offline changes persist locally and upload when the backend is available. Pulled settings update the interface automatically. Existing settings without a language use English. User-written notes, feed articles, file names, and Apple Calendar event content retain their original language.
+
 ### Today and work tools
 
 - **Today:** a dashboard of tasks, upcoming reminders, three world clocks, the Hebrew calendar, zmanim, and followed instruments. The dashboard expands across the available window width, including when maximized. Clocks and displayed timestamps omit seconds. The zmanim strip advances independently to the next upcoming time.
@@ -226,6 +230,11 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 ---
 
 <a id="hebrew"></a>
+
+### שפת הממשק
+
+ב־**הגדרות ← שפה** ניתן לבחור אנגלית (ברירת המחדל), עברית, צרפתית, רוסית או ספרדית. הממשק מתעדכן מיד, ובעברית מוצג מימין לשמאל. ההעדפה שייכת למופע הפעיל ומסתנכרנת עם השרת בשדה `user_settings.language` באמצעות הקודים `en`, `he`, `fr`, `ru`, `es`. שינוי ללא חיבור נשמר מקומית ונשלח כשהשרת זמין; העדפה שמתקבלת מהשרת מעדכנת את הממשק אוטומטית. הגדרות ישנות ללא שפה משתמשות באנגלית. תוכן שהמשתמש כתב, כתבות RSS, שמות קבצים ואירועי Apple Calendar נשארים בשפת המקור.
+
 
 # עברית
 

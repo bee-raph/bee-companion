@@ -18,7 +18,7 @@ struct InstanceConfiguration: Codable {
 enum CompanionError: LocalizedError {
   case message(String)
   var errorDescription: String? {
-    if case .message(let text) = self { return text }
+    if case .message(let text) = self { return L10n.message(text) }
     return nil
   }
 }

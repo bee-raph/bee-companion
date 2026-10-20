@@ -6,7 +6,12 @@ struct ZmanimEntry: Identifiable, Equatable {
   var title: String {
     let spaced = id.replacingOccurrences(
       of: "([a-z])([A-Z0-9])", with: "$1 $2", options: .regularExpression)
-    return spaced.prefix(1).uppercased() + spaced.dropFirst()
+    let labels = [
+      "alotHaShachar": "Dawn", "sunrise": "Sunrise", "sunset": "Sunset",
+      "tzeit7083deg": "Nightfall", "chatzot": "Solar noon", "candleLighting": "Candle lighting",
+      "havdalah": "Havdalah",
+    ]
+    return L10n.text(labels[id] ?? (spaced.prefix(1).uppercased() + spaced.dropFirst()))
   }
   static func sorted(_ times: [String: String]) -> [ZmanimEntry] {
     let fractional = ISO8601DateFormatter()
@@ -39,8 +44,9 @@ struct ZmanimStrip: View {
                 HStack(spacing: 5) {
                   Text(entry.title).font(.system(size: 11, weight: .medium))
                   if entry.id == nextID {
-                    Text("Next").font(.system(size: 9, weight: .semibold)).foregroundStyle(
-                      BeeTheme.accent)
+                    Text(L10n.text("Next")).font(.system(size: 9, weight: .semibold))
+                      .foregroundStyle(
+                        BeeTheme.accent)
                   }
                 }
                 Text(display(entry.date)).font(.system(size: 17, weight: .medium, design: .rounded))

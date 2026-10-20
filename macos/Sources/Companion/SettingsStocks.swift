@@ -43,12 +43,14 @@ struct StocksView: View {
         BeeSectionHeading(
           title: "Market watch", subtitle: "Your followed instruments", symbol: "chart.xyaxis.line")
         Spacer()
-        if !compact { Text("Updates automatically").font(.caption).foregroundStyle(.secondary) }
+        if !compact {
+          Text(L10n.text("Updates automatically")).font(.caption).foregroundStyle(.secondary)
+        }
       }
       if !compact {
         HStack {
-          TextField("Search instruments", text: $query)
-          Button("Search") { Task { await search() } }
+          TextField(L10n.text("Search instruments"), text: $query)
+          Button(L10n.text("Search")) { Task { await search() } }
         }
         ForEach(found.prefix(10)) { instrument in
           VStack(spacing: 0) {
@@ -60,7 +62,7 @@ struct StocksView: View {
                 }
               }
               Spacer()
-              Button("Follow") {
+              Button(L10n.text("Follow")) {
                 model.save(
                   Item(
                     kind: "watchlist_items",
@@ -76,27 +78,29 @@ struct StocksView: View {
           }.background(BeeTheme.surface, in: RoundedRectangle(cornerRadius: 10))
         }
       }
-      if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
+      if !message.isEmpty { Text(L10n.message(message)).font(.caption).foregroundStyle(.secondary) }
       ForEach(watchlist.prefix(compact ? 5 : 100)) { item in
         HStack {
           Button(item.body["symbol"] ?? item.title) { open(item) }.buttonStyle(.link)
           Text(item.title).lineLimit(1)
           Spacer()
           if let quote = quotes.first(where: { $0.symbol == item.body["symbol"] }) {
-            Text(quote.price.map { String(format: "%.4f", $0) } ?? "—").monospacedDigit()
-            Text(quote.change.map { String(format: "%+.4f", $0) } ?? "—").monospacedDigit()
-            Text(quote.changePercent.map { String(format: "%+.2f%%", $0) } ?? "—").foregroundStyle(
-              (quote.changePercent ?? 0) >= 0 ? .green : .red)
+            Text(quote.price.map { String(format: "%.4f", $0) } ?? L10n.text("—")).monospacedDigit()
+            Text(quote.change.map { String(format: "%+.4f", $0) } ?? L10n.text("—"))
+              .monospacedDigit()
+            Text(quote.changePercent.map { String(format: "%+.2f%%", $0) } ?? L10n.text("—"))
+              .foregroundStyle(
+                (quote.changePercent ?? 0) >= 0 ? .green : .red)
             VStack(alignment: .trailing) {
-              Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? "Unavailable")
-              if let error = quote.error { Text(error) }
+              Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? L10n.text("Unavailable"))
+              if let error = quote.error { Text(L10n.message(error)) }
             }.font(.caption)
           } else {
-            Text("—")
+            Text(L10n.text("—"))
           }
           if !compact {
             TextField(
-              "TradingView symbol",
+              L10n.text("TradingView symbol"),
               text: Binding(
                 get: { item.body["tradingView"] ?? "" },
                 set: { value in
@@ -105,12 +109,12 @@ struct StocksView: View {
                   model.save(copy)
                 })
             ).frame(width: 130)
-            Button("↑") {
+            Button(L10n.text("↑")) {
               var copy = item
               copy.body["order"] = String((Int(item.body["order"] ?? "0") ?? 0) - 1)
               model.save(copy)
             }
-            Button("Remove") {
+            Button(L10n.text("Remove")) {
               var copy = item
               copy.deleted = true
               model.save(copy)
@@ -119,7 +123,8 @@ struct StocksView: View {
         }
       }
       if watchlist.isEmpty {
-        Text("Search for an instrument to start following prices.").foregroundStyle(.secondary)
+        Text(L10n.text("Search for an instrument to start following prices.")).foregroundStyle(
+          .secondary)
       }
     }.padding()
   }
@@ -181,8 +186,7 @@ struct SettingsView: View {
   @State var busy = false
   @State var result = ""
   var settings: Item {
-    model.items.first { $0.kind == "user_settings" && !$0.deleted }
-      ?? Item(id: "00000000-0000-0000-0000-000000000001", kind: "user_settings", body: [:])
+    model.preferences
   }
   func binding(_ key: String, _ fallback: String = "") -> Binding<String> {
     Binding(
@@ -196,15 +200,26 @@ struct SettingsView: View {
   var body: some View {
     ScrollView {
       Form {
-        Text("Instance").font(.title2)
-        Text(model.configuration?.instanceName ?? "Local library")
-        Text(model.configuration?.apiBaseURL.absoluteString ?? "No backend configured")
+        Picker(
+          L10n.text("Language"),
+          selection: Binding(
+            get: { model.language }, set: { model.setLanguage($0) }
+          )
+        ) {
+          ForEach(AppLanguage.allCases) { language in
+            Text(language.name).tag(language)
+          }
+        }
+        Divider()
+        Text(L10n.text("Instance")).font(.title2)
+        Text(model.configuration?.instanceName ?? L10n.text("Local library"))
+        Text(model.configuration?.apiBaseURL.absoluteString ?? L10n.text("No backend configured"))
           .foregroundStyle(.secondary)
-        Button("Import instance configuration") { model.importConfiguration() }
-        TextField("Owner login", text: $login)
-        SecureField("Password", text: $password)
+        Button(L10n.text("Import instance configuration")) { model.importConfiguration() }
+        TextField(L10n.text("Owner login"), text: $login)
+        SecureField(L10n.text("Password"), text: $password)
         HStack {
-          Button("Sign in") {
+          Button(L10n.text("Sign in")) {
             guard let api = model.api else { return }
             busy = true
             Task {
@@ -217,7 +232,7 @@ struct SettingsView: View {
               busy = false
             }
           }.disabled(busy || model.api == nil)
-          Button("Sign out") {
+          Button(L10n.text("Sign out")) {
             Task {
               do {
                 guard model.pending == 0 else {
@@ -229,16 +244,16 @@ struct SettingsView: View {
             }
           }
         }
-        Text(result).font(.caption)
+        Text(L10n.message(result)).font(.caption)
         Divider()
-        Text("World clocks").font(.title2)
+        Text(L10n.text("World clocks")).font(.title2)
         TextField(
-          "Up to three IANA zones, comma separated",
+          L10n.text("Up to three IANA zones, comma separated"),
           text: binding("clocks", "Asia/Jerusalem,Europe/London,America/New_York"))
         Divider()
-        Text("Hebrew calendar").font(.title2)
+        Text(L10n.text("Hebrew calendar")).font(.title2)
         Toggle(
-          "Israel observances",
+          L10n.text("Israel observances"),
           isOn: Binding(
             get: { settings.body["israel"] != "false" },
             set: { value in
@@ -246,39 +261,47 @@ struct SettingsView: View {
               item.body["israel"] = String(value)
               model.save(item)
             }))
-        TextField("City name", text: binding("city"))
-        TextField("Latitude", text: binding("latitude"))
-        TextField("Longitude", text: binding("longitude"))
-        TextField("Time zone", text: binding("timezone", "Asia/Jerusalem"))
+        TextField(L10n.text("City name"), text: binding("city"))
+        TextField(L10n.text("Latitude"), text: binding("latitude"))
+        TextField(L10n.text("Longitude"), text: binding("longitude"))
+        TextField(L10n.text("Time zone"), text: binding("timezone", "Asia/Jerusalem"))
         Text(
-          "Location is required for candle lighting and zmanim. Calendar events from Apple stay local."
+          L10n.text(
+            "Location is required for candle lighting and zmanim. Calendar events from Apple stay local."
+          )
         ).font(.caption)
         Divider()
         ReadingSettingsView()
         Divider()
-        Text("Conflicts").font(.title2)
+        Text(L10n.text("Conflicts")).font(.title2)
         ForEach(model.conflicts) { conflict in
           VStack(alignment: .leading) {
             Text(conflict.local.title).font(.headline)
             HStack(alignment: .top) {
-              Text("Your version\n" + Sharing.plain(conflict.local)).textSelection(.enabled)
+              Text(L10n.text("Your version\n") + Sharing.plain(conflict.local)).textSelection(
+                .enabled)
               Divider()
-              Text("Server version\n" + (conflict.server.map { Sharing.plain($0) } ?? "Deleted"))
-                .textSelection(.enabled)
+              Text(
+                L10n.text("Server version\n")
+                  + (conflict.server.map { Sharing.plain($0) } ?? "Deleted")
+              )
+              .textSelection(.enabled)
             }
             HStack {
-              Button("Keep my version") { model.resolve(conflict, keepLocal: true) }
-              Button("Use server version") { model.resolve(conflict, keepLocal: false) }
+              Button(L10n.text("Keep my version")) { model.resolve(conflict, keepLocal: true) }
+              Button(L10n.text("Use server version")) { model.resolve(conflict, keepLocal: false) }
             }
           }
         }
         Divider()
-        Text("Diagnostics").font(.title2)
-        Text(model.message)
-        Text("\(model.pending) pending changes")
-        Button("Check external file edits") { model.checkWorkingCopies() }
+        Text(L10n.text("Diagnostics")).font(.title2)
+        Text(L10n.message(model.message))
+        Text(L10n.format("%d pending changes", model.pending))
+        Button(L10n.text("Check external file edits")) { model.checkWorkingCopies() }
         Text(
-          "The app saves locally. Docker is required only for backend access and synchronization."
+          L10n.text(
+            "The app saves locally. Docker is required only for backend access and synchronization."
+          )
         ).font(.caption)
       }.formStyle(.grouped).padding().frame(maxWidth: .infinity, alignment: .leading)
     }

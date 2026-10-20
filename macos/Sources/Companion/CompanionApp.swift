@@ -17,8 +17,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     alarms.update(model.items)
   }
   var body: some Scene {
-    WindowGroup("Bee Companion") {
+    WindowGroup(L10n.text("Bee Companion")) {
       ContentView().environmentObject(model).environmentObject(alarms)
+        .environment(\.locale, model.language.locale)
+        .environment(\.layoutDirection, model.language.direction)
         .frame(minWidth: 1100, minHeight: 740)
         .tint(BeeTheme.accent)
         .environmentObject(shabbat)
@@ -39,26 +41,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
           "Bee Companion",
           isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })
         ) {
-          Button("OK") { model.error = nil }
+          Button(L10n.text("OK")) { model.error = nil }
         } message: {
-          Text(model.error ?? "")
+          Text(L10n.message(model.error ?? ""))
         }
     }
     .commands {
       CommandGroup(after: .toolbar) {
-        Button("Open Shabbat Mode") { shabbat.show(model) }.keyboardShortcut(
+        Button(L10n.text("Open Shabbat Mode")) { shabbat.show(model) }.keyboardShortcut(
           "s", modifiers: [.command, .shift])
       }
       TextEditingCommands()
       TextFormattingCommands()
       CommandGroup(after: .newItem) {
-        Button("New Task") { _ = model.add("tasks") }.keyboardShortcut(
+        Button(L10n.text("New Task")) { _ = model.add("tasks") }.keyboardShortcut(
           "t", modifiers: [.command, .shift])
-        Button("New Note") { _ = model.add("notes") }.keyboardShortcut(
+        Button(L10n.text("New Note")) { _ = model.add("notes") }.keyboardShortcut(
           "n", modifiers: [.command, .shift])
       }
       CommandGroup(after: .saveItem) {
-        Button("Synchronize") { Task { await model.sync() } }.keyboardShortcut(
+        Button(L10n.text("Synchronize")) { Task { await model.sync() } }.keyboardShortcut(
           "r", modifiers: [.command, .shift])
       }
     }
@@ -77,19 +79,20 @@ struct ContentView: View {
           Image(nsImage: NSApp.applicationIconImage).resizable().interpolation(.high)
             .frame(width: 40, height: 40)
           VStack(alignment: .leading, spacing: 2) {
-            Text("Bee Companion").font(.system(size: 15, weight: .semibold))
-            Text("A little space for your day").font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(L10n.text("Bee Companion")).font(.system(size: 15, weight: .semibold))
+            Text(L10n.text("A little space for your day")).font(.system(size: 10)).foregroundStyle(
+              .secondary)
           }
           Spacer(minLength: 0)
         }.padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 23)
         List(selection: $section) {
-          SwiftUI.Section("Workspace") {
+          SwiftUI.Section(L10n.text("Workspace")) {
             ForEach([Section.today, .tasks, .notes, .files, .agenda, .alarms, .stocks, .rss]) {
               item in
               sidebarRow(item)
             }
           }
-          SwiftUI.Section("Library") {
+          SwiftUI.Section(L10n.text("Library")) {
             sidebarRow(.archive)
             sidebarRow(.settings)
           }
@@ -101,7 +104,8 @@ struct ContentView: View {
               width: 6, height: 6)
             Text(
               model.syncing
-                ? "Syncing your work…" : isOnline ? "Everything is up to date" : "Saved on this Mac"
+                ? L10n.text("Syncing your work…")
+                : isOnline ? L10n.text("Everything is up to date") : L10n.text("Saved on this Mac")
             )
             .font(.system(size: 11)).foregroundStyle(.secondary)
             Spacer()
@@ -110,19 +114,25 @@ struct ContentView: View {
             } label: {
               Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 11))
             }
-            .buttonStyle(.plain).disabled(model.syncing).help("Synchronize with your backend")
+            .buttonStyle(.plain).disabled(model.syncing).help(
+              L10n.text("Synchronize with your backend"))
           }
           HStack {
             Label(
-              model.configuration?.instanceName ?? "Offline library", systemImage: "externaldrive"
+              model.configuration?.instanceName ?? L10n.text("Offline library"),
+              systemImage: "externaldrive"
             )
             .lineLimit(1)
             Spacer()
-            if model.pending > 0 { Text("\(model.pending) pending").monospacedDigit() }
+            if model.pending > 0 {
+              Text(L10n.format("%d pending", model.pending)).monospacedDigit()
+            }
           }.font(.system(size: 10)).foregroundStyle(.tertiary)
           if !model.conflicts.isEmpty {
-            Button("\(model.conflicts.count) conflicts to review") { section = .settings }
-              .font(.caption).foregroundStyle(BeeTheme.amber).buttonStyle(.plain)
+            Button(L10n.format("%d conflicts to review", model.conflicts.count)) {
+              section = .settings
+            }
+            .font(.caption).foregroundStyle(BeeTheme.amber).buttonStyle(.plain)
           }
         }.padding(16)
       }.navigationSplitViewColumnWidth(min: 220, ideal: 242, max: 290)
@@ -142,36 +152,36 @@ struct ContentView: View {
         case .settings: SettingsView()
         }
       }.background(BeeTheme.canvas)
-        .navigationTitle(section?.rawValue ?? "Today")
-        .searchable(text: $query, prompt: "Search your workspace")
+        .navigationTitle(L10n.text(section?.rawValue ?? "Today"))
+        .searchable(text: $query, prompt: L10n.text("Search your workspace"))
         .toolbar {
           ToolbarItemGroup(placement: .primaryAction) {
             Button {
               shabbat.show(model)
             } label: {
-              Label("Shabbat mode", systemImage: "moon.stars")
-            }.labelStyle(.titleAndIcon).help("Open Shabbat mode · ⌘⇧S")
+              Label(L10n.text("Shabbat mode"), systemImage: "moon.stars")
+            }.labelStyle(.titleAndIcon).help(L10n.text("Open Shabbat mode · ⌘⇧S"))
             Menu {
-              Button("New task", systemImage: "checklist") {
+              Button(L10n.text("New task"), systemImage: "checklist") {
                 _ = model.add("tasks")
                 section = .tasks
               }
-              Button("New note", systemImage: "note.text") {
+              Button(L10n.text("New note"), systemImage: "note.text") {
                 _ = model.add("notes")
                 section = .notes
               }
-              Button("New reminder", systemImage: "alarm") {
+              Button(L10n.text("New reminder"), systemImage: "alarm") {
                 _ = model.add("reminders")
                 section = .alarms
               }
               Divider()
-              Button("Upload files", systemImage: "square.and.arrow.up") {
+              Button(L10n.text("Upload files"), systemImage: "square.and.arrow.up") {
                 model.importFile()
                 section = .files
               }
             } label: {
-              Label("Create", systemImage: "plus")
-            }.help("Create something new")
+              Label(L10n.text("Create"), systemImage: "plus")
+            }.help(L10n.text("Create something new"))
           }
         }
     }.navigationSplitViewStyle(.balanced)
@@ -180,7 +190,8 @@ struct ContentView: View {
     HStack(spacing: 10) {
       Image(systemName: item.symbol).font(.system(size: 14, weight: .medium))
         .foregroundStyle(section == item ? BeeTheme.accent : Color.secondary).frame(width: 20)
-      Text(item.rawValue).font(.system(size: 13, weight: section == item ? .semibold : .regular))
+      Text(L10n.text(item.rawValue)).font(
+        .system(size: 13, weight: section == item ? .semibold : .regular))
       Spacer()
       let count = model.items.filter {
         !$0.deleted && !$0.archived
@@ -224,8 +235,10 @@ struct ItemListView: View {
     HSplitView {
       VStack {
         if kind == "tasks" {
-          Picker("View", selection: $filter) {
-            ForEach(["All", "Today", "Upcoming", "Overdue"], id: \.self) { Text($0) }
+          Picker(L10n.text("View"), selection: $filter) {
+            ForEach(["All", "Today", "Upcoming", "Overdue"], id: \.self) {
+              Text(L10n.text($0)).tag($0)
+            }
           }.pickerStyle(.segmented).padding(8)
         }
         List(rows, selection: $selected) { item in
@@ -249,18 +262,20 @@ struct ItemListView: View {
                     .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 if item.kind == "tasks" {
-                  Text(item.body["status"] ?? "To do").font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(BeeTheme.accent).padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(BeeTheme.accent.opacity(0.08), in: Capsule())
+                  Text(L10n.text(item.body["status"] ?? "To do")).font(
+                    .system(size: 10, weight: .medium)
+                  )
+                  .foregroundStyle(BeeTheme.accent).padding(.horizontal, 6).padding(.vertical, 2)
+                  .background(BeeTheme.accent.opacity(0.08), in: Capsule())
                 }
               }
             }
           }.tag(item.id).padding(.vertical, 9)
         }
-        if kind == "notes" { Button("Import Markdown / RTF") { model.importNotes() } }
+        if kind == "notes" { Button(L10n.text("Import Markdown / RTF")) { model.importNotes() } }
         if let kind {
           Button(
-            "Add " + (kind == "tasks" ? "task" : kind == "notes" ? "note" : "alarm"),
+            L10n.text(kind == "tasks" ? "Add task" : kind == "notes" ? "Add note" : "Add alarm"),
             systemImage: "plus"
           ) { selected = model.add(kind).id }.padding()
         }
@@ -293,22 +308,29 @@ struct ItemEditor: View {
           Image(
             systemName: item.kind == "notes"
               ? "note.text" : item.kind == "tasks" ? "checklist" : "alarm")
-          Text(item.kind == "notes" ? "NOTE" : item.kind == "tasks" ? "TASK" : "REMINDER").tracking(
+          Text(
+            L10n.text(item.kind == "notes" ? "NOTE" : item.kind == "tasks" ? "TASK" : "REMINDER")
+          ).tracking(
             1.5)
         }.font(.system(size: 10, weight: .semibold)).foregroundStyle(BeeTheme.accent)
-        TextField("Title", text: text("title")).font(.system(size: 29, weight: .semibold))
-          .textFieldStyle(.plain)
-        TextField("Description", text: text("description"), axis: .vertical).lineLimit(3...8)
+        TextField(L10n.text("Title"), text: text("title")).font(
+          .system(size: 29, weight: .semibold)
+        )
+        .textFieldStyle(.plain)
+        TextField(L10n.text("Description"), text: text("description"), axis: .vertical).lineLimit(
+          3...8)
         if item.kind == "tasks" {
-          Picker("Status", selection: text("status", default: "To do")) {
-            ForEach(["To do", "In progress", "Done", "Cancelled"], id: \.self) { Text($0) }
+          Picker(L10n.text("Status"), selection: text("status", default: "To do")) {
+            ForEach(["To do", "In progress", "Done", "Cancelled"], id: \.self) {
+              Text(L10n.text($0)).tag($0)
+            }
           }
         }
         if item.kind == "tasks" || item.kind == "reminders" {
-          Toggle("Scheduled date", isOn: $dateEnabled)
+          Toggle(L10n.text("Scheduled date"), isOn: $dateEnabled)
           if dateEnabled {
             DatePicker(
-              "When",
+              L10n.text("When"),
               selection: Binding(
                 get: { item.date ?? Date() },
                 set: { item.body["date"] = ISO8601DateFormatter().string(from: $0) }),
@@ -316,7 +338,7 @@ struct ItemEditor: View {
                 ? [.date] : [.date, .hourAndMinute])
             if item.kind == "tasks" {
               Toggle(
-                "Date only",
+                L10n.text("Date only"),
                 isOn: Binding(
                   get: { item.body["dateOnly"] == "true" },
                   set: { item.body["dateOnly"] = String($0) }))
@@ -324,22 +346,26 @@ struct ItemEditor: View {
           }
         }
         if item.kind == "reminders" {
-          Picker("Repeat", selection: text("recurrence", default: "Once")) {
-            ForEach(["Once", "Daily", "Weekdays", "Weekly", "Monthly"], id: \.self) { Text($0) }
+          Picker(L10n.text("Repeat"), selection: text("recurrence", default: "Once")) {
+            ForEach(["Once", "Daily", "Weekdays", "Weekly", "Monthly"], id: \.self) {
+              Text(L10n.text($0)).tag($0)
+            }
           }
-          TextField("Time zone", text: text("timezone", default: TimeZone.current.identifier))
+          TextField(
+            L10n.text("Time zone"), text: text("timezone", default: TimeZone.current.identifier))
           if item.body["recurrence"] == "Weekdays" {
             TextField(
-              "Weekdays (1=Sunday … 7=Saturday)", text: text("weekdays", default: "2,3,4,5,6"))
+              L10n.text("Weekdays (1=Sunday … 7=Saturday)"),
+              text: text("weekdays", default: "2,3,4,5,6"))
           }
-          Button("Enable notifications") { Task { await alarms.requestPermission() } }
+          Button(L10n.text("Enable notifications")) { Task { await alarms.requestPermission() } }
         }
         if item.kind == "notes" {
           HStack {
-            Text(item.body["format"] == "rtf" ? "Rich text" : "Markdown").font(.headline)
+            Text(L10n.text(item.body["format"] == "rtf" ? "Rich text" : "Markdown")).font(.headline)
             Spacer()
-            if item.body["format"] != "rtf" { Toggle("Preview", isOn: $preview) }
-            Button("Convert copy") { convert() }
+            if item.body["format"] != "rtf" { Toggle(L10n.text("Preview"), isOn: $preview) }
+            Button(L10n.text("Convert copy")) { convert() }
           }
           if item.body["format"] == "rtf" {
             RichEditor(data: text("rtf"), plainText: text("text")).frame(minHeight: 320)
@@ -357,18 +383,20 @@ struct ItemEditor: View {
         if ["tasks", "notes", "reminders"].contains(item.kind) { attachments }
         Divider()
         HStack {
-          Button("Share with attachments") { model.shareWithAttachments(item) }
-          Menu("Export") {
-            Button("Text") { Sharing.export(item, format: "txt") }
-            Button("Rich text") { Sharing.export(item, format: "rtf") }
-            if item.kind == "notes" { Button("Markdown") { Sharing.export(item, format: "md") } }
+          Button(L10n.text("Share with attachments")) { model.shareWithAttachments(item) }
+          Menu(L10n.text("Export")) {
+            Button(L10n.text("Text")) { Sharing.export(item, format: "txt") }
+            Button(L10n.text("Rich text")) { Sharing.export(item, format: "rtf") }
+            if item.kind == "notes" {
+              Button(L10n.text("Markdown")) { Sharing.export(item, format: "md") }
+            }
           }
-          Button("WhatsApp") { Sharing.whatsApp(item) }
+          Button(L10n.text("WhatsApp")) { Sharing.whatsApp(item) }
           Spacer()
-          Button(item.archived ? "Restore" : "Archive") {
+          Button(L10n.text(item.archived ? "Restore" : "Archive")) {
             item.body["archived"] = String(!item.archived)
           }
-          Button("Trash", role: .destructive) { item.deleted = true }
+          Button(L10n.text("Trash"), role: .destructive) { item.deleted = true }
         }
       }.padding(32)
     }
@@ -384,7 +412,7 @@ struct ItemEditor: View {
   }
   var attachments: some View {
     VStack(alignment: .leading) {
-      Text("Attachments").font(.headline)
+      Text(L10n.text("Attachments")).font(.headline)
       ForEach(
         model.items.filter {
           !$0.deleted && $0.kind == attachmentKind && $0.body["ownerID"] == item.id
@@ -392,13 +420,15 @@ struct ItemEditor: View {
       ) { link in
         HStack {
           if let file = model.items.first(where: { $0.id == link.body["fileID"] }) {
-            Button(file.deleted ? file.title + " (trashed)" : file.title) { model.openFile(file) }
-              .disabled(file.deleted)
+            Button(file.deleted ? file.title + L10n.text(" (trashed)") : file.title) {
+              model.openFile(file)
+            }
+            .disabled(file.deleted)
           } else {
-            Text("Unavailable attachment")
+            Text(L10n.text("Unavailable attachment"))
           }
           Spacer()
-          Button("Remove") {
+          Button(L10n.text("Remove")) {
             var removed = link
             removed.deleted = true
             model.save(removed)
@@ -406,17 +436,17 @@ struct ItemEditor: View {
         }
       }
       HStack {
-        Picker("File", selection: $attachment) {
-          Text("Choose file").tag("")
+        Picker(L10n.text("File"), selection: $attachment) {
+          Text(L10n.text("Choose file")).tag("")
           ForEach(model.items.filter { $0.kind == "files" && !$0.deleted }) {
             Text($0.title).tag($0.id)
           }
         }
-        Button("Attach") {
+        Button(L10n.text("Attach")) {
           model.save(Item(kind: attachmentKind, body: ["ownerID": item.id, "fileID": attachment]))
           attachment = ""
         }.disabled(attachment.isEmpty)
-        Button("Add reminder") {
+        Button(L10n.text("Add reminder")) {
           model.save(
             Item(
               kind: "reminders",

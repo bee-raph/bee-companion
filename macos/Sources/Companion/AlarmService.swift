@@ -41,7 +41,7 @@ struct Recurrence {
       contentRect: NSRect(x: 0, y: 0, width: 520, height: 340), styleMask: [.titled],
       backing: .buffered, defer: false)
     window.isReleasedWhenClosed = false
-    window.title = "Reminder · " + title
+    window.title = L10n.format("Reminder · %@", title)
     window.level = .floating
     return window
   }
@@ -158,12 +158,12 @@ struct Recurrence {
             .textSelection(.enabled)
         }
         ForEach(attachmentLinks) { link in
-          Button("Open attachment") { [weak self] in
+          Button(L10n.text("Open attachment")) { [weak self] in
             if let fileID = link.body["fileID"] { self?.openAttachment?(fileID) }
           }
         }
         HStack {
-          Button("Snooze 10 minutes") { [weak self] in
+          Button(L10n.text("Snooze 10 minutes")) { [weak self] in
             self?.finish(id)
             var snoozed = item
             snoozed.id = UUID().uuidString.lowercased()
@@ -174,7 +174,8 @@ struct Recurrence {
             self?.saveItem?(snoozed)
           }
           Spacer()
-          Button("Dismiss") { [weak self] in self?.finish(id) }.keyboardShortcut(.defaultAction)
+          Button(L10n.text("Dismiss")) { [weak self] in self?.finish(id) }.keyboardShortcut(
+            .defaultAction)
         }
       }.padding(24))
     windows[id] = window

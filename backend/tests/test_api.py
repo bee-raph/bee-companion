@@ -289,3 +289,25 @@ def test_reader_settings_sync_and_limit(client):
     )
     assert client.get("/api/v1/rss/feeds").status_code == 401
     assert client.get("/api/v1/weather?latitude=0&longitude=0").status_code == 401
+
+
+@pytest.mark.parametrize("language", ["en", "he", "fr", "ru", "es"])
+def test_language_setting_sync_roundtrip(client, language):
+    h = headers(client)
+    body = {"language": language}
+    m = mutation(kind="user_settings", body=body)
+    m["id"] = "00000000-0000-0000-0000-000000000001"
+    response = client.post("/api/v1/sync/push", headers=h, json={"mutations": [m]})
+    assert response.status_code == 200
+    assert (
+        client.get("/api/v1/sync/pull", headers=h).json()["changes"][0]["body"] == body
+    )
+
+
+def test_unsupported_language_rejected(client):
+    h = headers(client)
+    m = mutation(kind="user_settings", body={"language": "xx"})
+    assert (
+        client.post("/api/v1/sync/push", headers=h, json={"mutations": [m]}).status_code
+        == 422
+    )

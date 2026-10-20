@@ -52,6 +52,7 @@ import SwiftUI
   func reload() {
     do {
       items = try store.all()
+      L10n.language = language
       pending = try store.pending().count
       conflicts = try store.conflicts()
     } catch { self.error = error.localizedDescription }
@@ -337,11 +338,12 @@ import SwiftUI
           throw CompanionError.message("Connect to backend to permanently delete")
         }
         let alert = NSAlert()
-        alert.messageText = "Permanently delete " + item.title + "?"
+        alert.messageText = L10n.format("Permanently delete %@?", item.title)
         alert.informativeText =
-          "This removes all stored versions. Existing attachments will become unavailable."
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Delete permanently")
+          L10n.text(
+            "This removes all stored versions. Existing attachments will become unavailable.")
+        alert.addButton(withTitle: L10n.text("Cancel"))
+        alert.addButton(withTitle: L10n.text("Delete permanently"))
         guard alert.runModal() == .alertSecondButtonReturn else { return }
         await sync()
         guard pending == 0 else {
@@ -363,9 +365,9 @@ import SwiftUI
           != item.body["checksum"]
       else { continue }
       let alert = NSAlert()
-      alert.messageText = "Upload changes to " + item.title + "?"
-      alert.addButton(withTitle: "Upload new version")
-      alert.addButton(withTitle: "Later")
+      alert.messageText = L10n.format("Upload changes to %@?", item.title)
+      alert.addButton(withTitle: L10n.text("Upload new version"))
+      alert.addButton(withTitle: L10n.text("Later"))
       if alert.runModal() == .alertFirstButtonReturn {
         Task { await uploadFile(target, existing: item) }
       }
