@@ -60,7 +60,7 @@ struct RSSReaderView: View {
             Text(BeeDisplayTime.timestamp(pair.1.published)).foregroundStyle(.secondary)
             Text(pair.1.summary).font(.system(size: 17)).lineSpacing(7).textSelection(.enabled)
             if let url = URL(string: pair.1.url), ["http", "https"].contains(url.scheme ?? "") {
-              Link("Read original article", destination: url)
+              Link(L10n.text("Read original article"), destination: url)
             }
           }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
         }

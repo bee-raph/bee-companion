@@ -15,7 +15,7 @@ import SwiftUI
       contentRect: screen, styleMask: [.titled, .closable, .resizable, .miniaturizable],
       backing: .buffered, defer: false)
     panel.isReleasedWhenClosed = false
-    panel.title = "Bee Companion · Shabbat"
+    panel.title = L10n.text("Bee Companion · Shabbat")
     panel.collectionBehavior = [.fullScreenPrimary]
     panel.delegate = self
     panel.contentView = NSHostingView(

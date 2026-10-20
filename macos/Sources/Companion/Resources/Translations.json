@@ -319,7 +319,10 @@
     "All-day": "All-day",
     "Previous": "Previous",
     "Active": "Active",
-    "Archived": "Archived"
+    "Archived": "Archived",
+    "Search your workspace": "Search your workspace",
+    "Refreshing…": "Refreshing…",
+    "Bee Companion · Shabbat": "Bee Companion · Shabbat"
   },
   "he": {
     "Today": "היום",
@@ -641,7 +644,10 @@
     "All-day": "כל היום",
     "Previous": "הקודם",
     "Active": "פעילות",
-    "Archived": "בארכיון"
+    "Archived": "בארכיון",
+    "Search your workspace": "חיפוש בסביבת העבודה",
+    "Refreshing…": "מתרענן…",
+    "Bee Companion · Shabbat": "Bee Companion · שבת"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -963,7 +969,10 @@
     "All-day": "Toute la journée",
     "Previous": "Précédent",
     "Active": "Actives",
-    "Archived": "Archivées"
+    "Archived": "Archivées",
+    "Search your workspace": "Rechercher dans votre espace de travail",
+    "Refreshing…": "Actualisation…",
+    "Bee Companion · Shabbat": "Bee Companion · Chabbat"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1162,7 +1171,7 @@
     "Saved conditions": "Сохранённая погода",
     "Unavailable": "Недоступно",
     "No articles in this feed.": "В этой ленте нет статей.",
-    "Read original article": "Читать оригинал",
+    "Read original article": "Читать оригинал статьи",
     "Requesting access…": "Запрос доступа…",
     "Choose calendars": "Выбрать календари",
     "Local library": "Локальная библиотека",
@@ -1285,7 +1294,10 @@
     "All-day": "Весь день",
     "Previous": "Назад",
     "Active": "Активные",
-    "Archived": "Архивные"
+    "Archived": "Архивные",
+    "Search your workspace": "Поиск в рабочем пространстве",
+    "Refreshing…": "Обновление…",
+    "Bee Companion · Shabbat": "Bee Companion · Шаббат"
   },
   "es": {
     "Today": "Hoy",
@@ -1484,7 +1496,7 @@
     "Saved conditions": "Condiciones guardadas",
     "Unavailable": "No disponible",
     "No articles in this feed.": "No hay artículos en esta fuente.",
-    "Read original article": "Leer artículo original",
+    "Read original article": "Leer el artículo original",
     "Requesting access…": "Solicitando acceso…",
     "Choose calendars": "Elegir calendarios",
     "Local library": "Biblioteca local",
@@ -1607,6 +1619,9 @@
     "All-day": "Todo el día",
     "Previous": "Anterior",
     "Active": "Activas",
-    "Archived": "Archivadas"
+    "Archived": "Archivadas",
+    "Search your workspace": "Buscar en tu espacio de trabajo",
+    "Refreshing…": "Actualizando…",
+    "Bee Companion · Shabbat": "Bee Companion · Shabat"
   }
 }

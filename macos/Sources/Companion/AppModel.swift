@@ -111,7 +111,8 @@ import SwiftUI
     let item = Item(
       kind: kind,
       body: [
-        "title": kind == "tasks" ? "New task" : kind == "notes" ? "New note" : "New alarm",
+        "title": L10n.text(
+          kind == "tasks" ? "New task" : kind == "notes" ? "New note" : "New alarm"),
         "status": "To do", "format": kind == "notes" ? "rtf" : "markdown",
       ])
     save(item)

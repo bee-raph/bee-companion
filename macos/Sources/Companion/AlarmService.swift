@@ -34,7 +34,7 @@ struct Recurrence {
     return dates
   }
 }
-/// AlarmService owns these windows; AppKit must not release them again on close.
+/// AlarmService owns these windows; AppKit does not release them on close.
 @MainActor enum AlarmWindow {
   static func make(title: String) -> NSWindow {
     let window = NSWindow(

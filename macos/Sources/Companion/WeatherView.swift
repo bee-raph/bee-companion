@@ -67,7 +67,7 @@ struct WeatherView: View {
             Spacer()
           }
           Text(
-            "Open-Meteo · "
+            L10n.text("Open-Meteo · ")
               + (weather.stale
                 ? L10n.text("Saved conditions") : BeeDisplayTime.timestamp(weather.timestamp))
           ).font(.caption).foregroundStyle(.secondary)
