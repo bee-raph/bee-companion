@@ -127,9 +127,55 @@ enum ReaderPreferences {
       weather = stored
     }
   }
+  func refreshLocation(_ model: AppModel, enabled: Bool = true) async {
+    guard enabled else { return }
+    restore(model)
+    let location = CompanionLocation(model.preferences.body)
+    let key = location.cacheKey(model.configuration?.instanceID ?? "local")
+    let date = location.day()
+    zmanim = ZmanimEntry.sorted(
+      UserDefaults.standard.dictionary(forKey: key + ".zmanim." + date) as? [String: String] ?? [:])
+    let weatherURL = model.cache.appendingPathComponent("weather-" + location.identity + ".json")
+    if let data = try? Data(contentsOf: weatherURL),
+      var saved = try? JSONDecoder().decode(WeatherResponse.self, from: data)
+    {
+      saved.stale = true
+      weather = saved
+    } else {
+      weather = nil
+    }
+    guard let query = location.query else {
+      messages.append(
+        "Set city, latitude, longitude and time zone in Settings for weather and zmanim.")
+      return
+    }
+    guard let api = model.api else { return }
+    async let times: Void = loadTimes(api, query: query, date: date, key: key)
+    async let conditions: Void = loadWeather(api, query: query, url: weatherURL)
+    _ = await (times, conditions)
+  }
+  private func loadTimes(_ api: API, query: String, date: String, key: String) async {
+    struct Times: Decodable { let times: [String: String] }
+    do {
+      let response: Times = try await api.request("calendar/zmanim?date=\(date)&" + query)
+      zmanim = ZmanimEntry.sorted(response.times)
+      UserDefaults.standard.set(response.times, forKey: key + ".zmanim." + date)
+    } catch { messages.append("Zmanim unavailable; check location and connection.") }
+  }
+  private func loadWeather(_ api: API, query: String, url: URL) async {
+    do {
+      let response: WeatherResponse = try await api.request("weather?" + query)
+      weather = response
+      try JSONEncoder().encode(response).write(to: url, options: .atomic)
+    } catch {
+      weather?.stale = true
+      messages.append("Weather: " + error.localizedDescription)
+    }
+  }
   func refresh(_ model: AppModel, dashboard: Bool = false) async {
     restore(model)
     guard !refreshing else { return }
+    async let location: Void = refreshLocation(model, enabled: dashboard)
     refreshing = true
     defer { refreshing = false }
     messages = []
@@ -150,49 +196,12 @@ enum ReaderPreferences {
       }
       messages.append("RSS: " + error.localizedDescription)
     }
+    await location
     guard dashboard else {
       lastRefresh = Date()
       return
     }
     let body = model.preferences.body
-    if let latitude = Double(body["latitude"] ?? ""),
-      let longitude = Double(body["longitude"] ?? "")
-    {
-      var components = URLComponents()
-      components.queryItems = [
-        URLQueryItem(name: "latitude", value: String(latitude)),
-        URLQueryItem(name: "longitude", value: String(longitude)),
-        URLQueryItem(name: "timezone", value: body["timezone"] ?? "Asia/Jerusalem"),
-      ]
-      let query = components.percentEncodedQuery ?? ""
-      do {
-        let result: WeatherResponse = try await api.request("weather?" + query)
-        weather = result
-        try JSONEncoder().encode(result).write(
-          to: model.cache.appendingPathComponent("weather-cache.json"), options: .atomic)
-      } catch {
-        weather?.stale = true
-        messages.append("Weather: " + error.localizedDescription)
-      }
-      let formatter = DateFormatter()
-      formatter.timeZone = TimeZone(identifier: body["timezone"] ?? "Asia/Jerusalem")
-      formatter.dateFormat = "yyyy-MM-dd"
-      let date = formatter.string(from: Date())
-      struct Times: Decodable { var times: [String: String] }
-      do {
-        let result: Times = try await api.request("calendar/zmanim?date=\(date)&" + query)
-        zmanim = ZmanimEntry.sorted(result.times)
-        UserDefaults.standard.set(result.times, forKey: "shabbat.zmanim." + instance + "." + date)
-      } catch {
-        zmanim = ZmanimEntry.sorted(
-          UserDefaults.standard.dictionary(forKey: "shabbat.zmanim." + instance + "." + date)
-            as? [String: String] ?? [:])
-        messages.append("Zmanim unavailable; check location and connection.")
-      }
-    } else {
-      messages.append(
-        "Set city, latitude, longitude and time zone in Settings for weather and zmanim.")
-    }
     let chosen = Set(ReaderPreferences.selectedStocks(body))
     let symbols = Array(
       Set(

@@ -250,7 +250,10 @@ struct HebrewCalendarView: View {
           Text(BeeDisplayTime.timestamp(event.date)).font(.caption)
         }
       }
-    }.padding().task {
+    }.padding().task(
+      id: (model.configuration?.instanceID ?? "local")
+        + CompanionLocation(model.preferences.body).identity
+    ) {
       while !Task.isCancelled {
         await load()
         try? await Task.sleep(
@@ -266,6 +269,10 @@ struct HebrewCalendarView: View {
     {
       events = saved.items
     }
+    let location = CompanionLocation(model.preferences.body)
+    let date = location.day()
+    let timesKey = location.cacheKey(model.configuration?.instanceID ?? "local") + ".zmanim." + date
+    zmanim = UserDefaults.standard.dictionary(forKey: timesKey) as? [String: String] ?? [:]
     guard let api = model.api else {
       message = "Connect backend to load holidays and location times."
       return
@@ -273,30 +280,14 @@ struct HebrewCalendarView: View {
     let settings = model.items.first { $0.kind == "user_settings" && !$0.deleted }
     let year = Calendar.current.component(.year, from: Date())
     struct Zmanim: Decodable { var times: [String: String] }
-    if let lat = settings?.body["latitude"], let lon = settings?.body["longitude"], !lat.isEmpty,
-      !lon.isEmpty
-    {
-      let date = Date().formatted(.iso8601.year().month().day().dateSeparator(.dash))
-      if let result: Zmanim = try? await api.request(
-        "calendar/zmanim?date=\(date)&latitude=\(lat)&longitude=\(lon)&timezone="
-          + (settings?.body["timezone"] ?? "Asia/Jerusalem"))
-      {
+    if let query = location.query {
+      if let result: Zmanim = try? await api.request("calendar/zmanim?date=\(date)&" + query) {
         zmanim = result.times
-        UserDefaults.standard.set(result.times, forKey: key + ".zmanim." + date)
-      } else {
-        zmanim =
-          UserDefaults.standard.dictionary(forKey: key + ".zmanim." + date) as? [String: String]
-          ?? [:]
+        UserDefaults.standard.set(result.times, forKey: timesKey)
       }
     }
     var path = "calendar/hebrew?year=\(year)&israel=\(settings?.body["israel"] != "false")"
-    if let lat = settings?.body["latitude"], let lon = settings?.body["longitude"], !lat.isEmpty,
-      !lon.isEmpty
-    {
-      path +=
-        "&latitude=\(lat)&longitude=\(lon)&timezone="
-        + (settings?.body["timezone"] ?? "Asia/Jerusalem")
-    }
+    if let query = location.query { path += "&" + query }
     do {
       let result: HebrewResponse = try await api.request(path)
       events = result.items
@@ -363,6 +354,7 @@ struct TodayView: View {
               }.count), symbol: "square.stack", color: BeeTheme.amber)
         }
         WorldClocksView()
+        WeatherView()
         HStack(alignment: .top, spacing: 20) {
           BeeCard {
             VStack(alignment: .leading, spacing: 20) {

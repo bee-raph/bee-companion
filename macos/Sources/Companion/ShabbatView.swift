@@ -249,9 +249,9 @@ struct ShabbatView: View {
     .task(
       id: (model.configuration?.instanceID ?? "local")
         + (model.preferences.body["shabbatRefreshSeconds"] ?? "300")
+        + CompanionLocation(model.preferences.body).identity
     ) {
       while !Task.isCancelled {
-        await model.sync()
         await data.refresh(model, dashboard: true)
         try? await Task.sleep(
           for: .seconds(ReaderPreferences.refreshSeconds(model.preferences.body)))

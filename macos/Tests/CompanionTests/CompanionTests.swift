@@ -224,3 +224,26 @@ final class LocalizationTests: XCTestCase {
     XCTAssertEqual(try local.pending().count, 0)
   }
 }
+
+final class LocationTests: XCTestCase {
+  func testSharedLocationQueryValidationAndCacheIsolation() throws {
+    let location = CompanionLocation([
+      "latitude": " 31.78 ", "longitude": "35.23", "timezone": "Asia/Jerusalem",
+    ])
+    let query = try XCTUnwrap(location.query)
+    XCTAssertTrue(query.contains("latitude=31.78"))
+    XCTAssertTrue(query.contains("longitude=35.23"))
+    XCTAssertEqual(
+      location.cacheKey("instance"), CompanionLocation(location.body).cacheKey("instance"))
+    XCTAssertNotEqual(location.cacheKey("instance"), location.cacheKey("other"))
+    XCTAssertNotEqual(
+      location.identity, CompanionLocation(["latitude": "0", "longitude": "0"]).identity)
+    XCTAssertNil(CompanionLocation(["latitude": "NaN", "longitude": "0"]).query)
+    XCTAssertNil(CompanionLocation(["latitude": "91", "longitude": "0"]).query)
+  }
+  func testProviderDateIsGregorianInSelectedZone() {
+    let instant = ISO8601DateFormatter().date(from: "2026-10-20T22:30:00Z")!
+    XCTAssertEqual(CompanionLocation(["timezone": "Asia/Jerusalem"]).day(instant), "2026-10-21")
+    XCTAssertEqual(CompanionLocation(["timezone": "America/New_York"]).day(instant), "2026-10-20")
+  }
+}

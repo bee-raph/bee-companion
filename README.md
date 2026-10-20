@@ -28,6 +28,10 @@ Lists and tables use native macOS selection, alternating rows, and compact **+ /
 - **Stocks:** London Strategic Edge instrument search, watchlist, latest available minute candle close, change against the previous completed daily bar, timestamps, and editable TradingView symbol mappings. Prices are derived from candles.
 - **Sharing:** the native share picker, plain-text WhatsApp compose flow, and LocalSend handoff for files. Destination applications must be installed or available. The user confirms recipients and sending; nothing is sent automatically.
 
+### Weather and shared location
+
+Today includes local weather: current temperature, daily high/low, feels-like temperature, humidity, and wind. Configure city, latitude, longitude, and time zone once in Settings; Today and Shabbat use the same location and zmanim cache. Weather refreshes every ten minutes on Today; Shabbat uses its configured refresh interval, subject to the backend's ten-minute weather cache. Weather and zmanim load independently of RSS, stocks, and synchronization. Saved conditions remain available offline and are labelled as saved. Open-Meteo provides weather through the backend without an extra API key. Location coordinates are sent to Open-Meteo for weather and Hebcal for zmanim.
+
 ### RSS reader
 
 Configure **up to three RSS or Atom feeds** in **Settings → RSS & Shabbat mode**. Each has a name and public HTTP/HTTPS feed URL. **Add feed** and **Edit** open a native popup with editable name and URL fields; saving it queues the feed changes for backend synchronization. The reader groups articles by feed, displays publication dates and plain-text summaries, and opens original articles in the default browser. It does not crawl full articles or load remote scripts and images.
@@ -232,6 +236,11 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 ---
 
 <a id="hebrew"></a>
+
+### מזג אוויר ומיקום משותף
+
+במסך היום מוצגים טמפרטורה נוכחית, מינימום ומקסימום יומיים, תחושת חום, לחות ורוח. הגדירו פעם אחת עיר, קו רוחב, קו אורך ואזור זמן בהגדרות; מסך היום ומצב שבת משתמשים באותו מיקום ובאותו מטמון זמני היום. מזג האוויר מתרענן במסך היום כל עשר דקות, ובמצב שבת לפי מרווח הרענון שנבחר ובכפוף למטמון השרת בן עשר הדקות. מזג האוויר וזמני היום נטענים באופן עצמאי מהזנות, מניות וסנכרון. נתונים שמורים זמינים גם ללא חיבור ומסומנים בהתאם. השירות מסופק דרך השרת באמצעות Open-Meteo ללא מפתח נוסף. הקואורדינטות נשלחות ל־Open-Meteo למזג האוויר ול־Hebcal לזמני היום.
+
 
 רשימות וטבלאות משתמשות בבחירה ובשורות מתחלפות בסגנון macOS, עם כפתורי **+ / −** בתחתית הרשימה. בחרו פריט כדי לאפשר הסרה. משימות, הערות, תזכורות וקבצי הספרייה מועברים לסל; הזנות ומניות מוסרות מהרשימה. בקבצים, **+** מייבא קבצים ו־**תיקייה חדשה** יוצר תיקייה; במניות, **+** מעביר את המיקוד לחיפוש.
 
