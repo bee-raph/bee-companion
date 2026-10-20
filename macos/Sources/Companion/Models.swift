@@ -97,6 +97,7 @@ enum Section: String, CaseIterable, Identifiable {
   case archive = "Archive"
   case settings = "Settings"
   var id: String { rawValue }
+  func title(language: AppLanguage? = nil) -> String { L10n.text(rawValue, language: language) }
   var symbol: String {
     switch self {
     case .today: return "sun.max"
@@ -110,5 +111,23 @@ enum Section: String, CaseIterable, Identifiable {
     case .archive: return "archivebox"
     case .settings: return "gear"
     }
+  }
+}
+
+/// Only records in the visible collection may supply its editor selection.
+enum CollectionSelection {
+  static func item(_ id: String?, in rows: [Item]) -> Item? {
+    guard let id else { return nil }
+    return rows.first { $0.id == id }
+  }
+}
+
+struct WorkListScope {
+  let kind: String?
+  var archived = false
+  func contains(_ item: Item) -> Bool {
+    !item.deleted && item.archived == archived
+      && ["tasks", "notes", "reminders"].contains(item.kind)
+      && (kind == nil || item.kind == kind)
   }
 }

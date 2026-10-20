@@ -73,7 +73,7 @@ struct FilesView: View {
         }.disabled(trash)
       }
 
-      if let item = model.items.first(where: { $0.id == selected }) {
+      if let item = CollectionSelection.item(selected, in: rows) {
         VStack(alignment: .leading) {
           HStack {
             TextField(L10n.text("Name"), text: $name)

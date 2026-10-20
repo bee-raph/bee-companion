@@ -151,8 +151,8 @@ struct ContentView: View {
         case .rss: RSSReaderView()
         case .settings: SettingsView()
         }
-      }.background(BeeTheme.canvas)
-        .navigationTitle(L10n.text(section?.rawValue ?? "Today"))
+      }.id(section ?? .today).background(BeeTheme.canvas)
+        .navigationTitle((section ?? .today).title())
         .searchable(text: $query, prompt: L10n.text("Search your workspace"))
         .toolbar {
           ToolbarItemGroup(placement: .primaryAction) {
@@ -190,7 +190,7 @@ struct ContentView: View {
     HStack(spacing: 10) {
       Image(systemName: item.symbol).font(.system(size: 14, weight: .medium))
         .foregroundStyle(section == item ? BeeTheme.accent : Color.secondary).frame(width: 20)
-      Text(L10n.text(item.rawValue)).font(
+      Text(item.title()).font(
         .system(size: 13, weight: section == item ? .semibold : .regular))
       Spacer()
       let count = model.items.filter {
@@ -216,7 +216,7 @@ struct ItemListView: View {
   var rows: [Item] {
     let ids = query.isEmpty ? nil : (try? model.store.search(query))
     return model.items.filter { item in
-      guard !item.deleted, item.archived == archived, kind == nil || item.kind == kind,
+      guard WorkListScope(kind: kind, archived: archived).contains(item),
         ids == nil || ids!.contains(item.id)
       else { return false }
       if kind == "tasks", filter != "All" {
@@ -290,7 +290,7 @@ struct ItemListView: View {
           }
         }
       }.frame(minWidth: 270, idealWidth: 330).background(BeeTheme.surface)
-      if let item = model.items.first(where: { $0.id == selected }) {
+      if let item = CollectionSelection.item(selected, in: rows) {
         ItemEditor(item: item).id(item.id).frame(minWidth: 400)
       } else {
         BeeEmptyState(

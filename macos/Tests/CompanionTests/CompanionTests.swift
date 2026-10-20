@@ -247,3 +247,66 @@ final class LocationTests: XCTestCase {
     XCTAssertEqual(CompanionLocation(["timezone": "America/New_York"]).day(instant), "2026-10-20")
   }
 }
+
+final class PageIsolationTests: XCTestCase {
+  func testEveryPageTitleInEveryLanguage() {
+    let titles: [AppLanguage: [String]] = [
+      .english: [
+        "Today", "Tasks", "Files", "Notes", "Agenda", "Alarms", "Stocks", "RSS Reader", "Archive",
+        "Settings",
+      ],
+      .hebrew: [
+        "היום", "משימות", "קבצים", "הערות", "סדר יום", "תזכורות", "מניות", "קורא RSS", "ארכיון",
+        "הגדרות",
+      ],
+      .french: [
+        "Aujourd’hui", "Tâches", "Fichiers", "Notes", "Agenda", "Rappels", "Marchés", "Lecteur RSS",
+        "Archives", "Réglages",
+      ],
+      .russian: [
+        "Сегодня", "Задачи", "Файлы", "Заметки", "Календарь", "Напоминания", "Акции", "RSS-лента",
+        "Архив", "Настройки",
+      ],
+      .spanish: [
+        "Hoy", "Tareas", "Archivos", "Notas", "Agenda", "Recordatorios", "Acciones", "Lector RSS",
+        "Archivo", "Configuración",
+      ],
+    ]
+    for language in AppLanguage.allCases {
+      XCTAssertEqual(Section.allCases.map { $0.title(language: language) }, titles[language])
+    }
+  }
+  func testNotesPreserveUserTitleAndRejectSelectionsFromOtherPages() {
+    let note = Item(kind: "notes", body: ["title": "Stocks to watch"])
+    let task = Item(kind: "tasks", body: ["title": "Task"])
+    let alarm = Item(kind: "reminders", body: ["title": "Alarm"])
+    let stock = Item(kind: "watchlist_items", body: ["title": "Stock"])
+    let file = Item(kind: "files", body: ["title": "File"])
+    let settings = Item(kind: "user_settings")
+    let items = [note, task, alarm, stock, file, settings]
+    for (kind, expected) in [("notes", note), ("tasks", task), ("reminders", alarm)] {
+      let rows = items.filter { WorkListScope(kind: kind).contains($0) }
+      XCTAssertEqual(rows, [expected])
+      XCTAssertEqual(CollectionSelection.item(expected.id, in: rows), expected)
+      for other in items where other.id != expected.id {
+        XCTAssertNil(CollectionSelection.item(other.id, in: rows))
+      }
+    }
+    XCTAssertEqual(note.title, "Stocks to watch")
+    XCTAssertEqual(Section.notes.title(language: .english), "Notes")
+  }
+  func testHiddenDeletedAndArchivedSelectionsCannotOpenEditors() {
+    let original = Item(kind: "notes", body: ["title": "Note"])
+    var archived = original
+    archived.body["archived"] = "true"
+    var deleted = original
+    deleted.deleted = true
+    XCTAssertFalse(WorkListScope(kind: "notes").contains(archived))
+    XCTAssertFalse(WorkListScope(kind: "notes").contains(deleted))
+    XCTAssertTrue(WorkListScope(kind: nil, archived: true).contains(archived))
+    XCTAssertFalse(WorkListScope(kind: nil, archived: true).contains(deleted))
+    // Includes switching folders, Trash, filters or pages with an old selection.
+    XCTAssertNil(CollectionSelection.item(original.id, in: []))
+    XCTAssertNil(CollectionSelection.item(nil, in: [original]))
+  }
+}
