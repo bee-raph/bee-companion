@@ -335,7 +335,7 @@ def test_all_content_and_complete_settings_persist_in_backend(client):
         "agendaRange": "Week",
     }
     mutations = []
-    for kind in sorted(KINDS):
+    for kind in sorted(KINDS - {"crm_contacts", "crm_actions", "crm_attachments"}):
         body = (
             settings
             if kind == "user_settings"
@@ -358,6 +358,30 @@ def test_all_content_and_complete_settings_persist_in_backend(client):
         if kind.endswith("_attachments"):
             body.update({"ownerID": str(uuid.uuid4()), "fileID": str(uuid.uuid4())})
         mutations.append(mutation(kind=kind, body=body))
+    contact = crm_contact()
+    action = mutation(
+        kind="crm_actions",
+        body={
+            "title": "Call",
+            "contactID": contact["id"],
+            "actionType": "Phone call",
+            "date": "2026-10-20T10:00:00Z",
+        },
+    )
+    file = next(m for m in mutations if m["kind"] == "files")
+    mutations.extend(
+        [
+            contact,
+            action,
+            mutation(
+                kind="crm_attachments",
+                body={
+                    "ownerID": action["id"],
+                    "fileID": file["id"],
+                },
+            ),
+        ]
+    )
     response = client.post(
         "/api/v1/sync/push", headers=h, json={"mutations": mutations}
     )
@@ -377,4 +401,163 @@ def test_all_content_and_complete_settings_persist_in_backend(client):
     assert (
         next(change["body"] for change in changes if change["kind"] == "user_settings")
         == settings
+    )
+
+
+def crm_contact(**body):
+    return mutation(
+        kind="crm_contacts",
+        body={
+            "title": "Acme שלום",
+            "identityType": "Company",
+            "contactType": "Client",
+            "emails": "hello@example.com\nbilling@example.com",
+            "mobiles": "+972501234567",
+            "addresses": "1 Main Street, Tel Aviv\n2 Rue Exemple, Paris",
+            **body,
+        },
+    )
+
+
+def test_crm_round_trip_documents_actions_reminders(client):
+    h = headers(client)
+    contact = crm_contact(
+        format="rtf",
+        text="Contact note with image",
+        rtf="e1xydGYxIEhlbGxvfQ==",
+        rtfd="opaque-image-bearing-data",
+    )
+    action = mutation(
+        kind="crm_actions",
+        body={
+            "title": "Invoice follow-up",
+            "contactID": contact["id"],
+            "actionType": "Invoice sent",
+            "description": "Discuss payment schedule",
+            "date": "2026-10-20T10:00:00Z",
+            "reminderDate": "2026-10-21T10:00:00Z",
+        },
+    )
+    file = mutation(kind="files", body={"title": "invoice.pdf", "parent": ""})
+    links = [
+        mutation(
+            kind="crm_attachments", body={"ownerID": owner["id"], "fileID": file["id"]}
+        )
+        for owner in (contact, action)
+    ]
+    reminder = mutation(
+        kind="reminders",
+        body={
+            "title": action["body"]["title"],
+            "actionID": action["id"],
+            "contactID": contact["id"],
+            "date": "2026-10-21T10:00:00Z",
+            "recurrence": "Once",
+        },
+    )
+    records = [contact, action, file, *links, reminder]
+    result = client.post("/api/v1/sync/push", headers=h, json={"mutations": records})
+    assert result.status_code == 200, result.text
+    assert all(r["status"] == "applied" for r in result.json()["results"])
+    pulled = client.get("/api/v1/sync/pull", headers=h).json()["changes"]
+    assert {r["id"] for r in pulled} == {r["id"] for r in records}
+    for sent in records:
+        assert next(r for r in pulled if r["id"] == sent["id"])["body"] == sent["body"]
+    updated = {
+        **contact,
+        "operationID": str(uuid.uuid4()),
+        "expectedRevision": 1,
+        "body": {**contact["body"], "contactType": "Provider"},
+    }
+    assert (
+        client.post(
+            "/api/v1/sync/push", headers=h, json={"mutations": [updated]}
+        ).json()["results"][0]["record"]["revision"]
+        == 2
+    )
+    stale = {**contact, "operationID": str(uuid.uuid4()), "expectedRevision": 1}
+    assert (
+        client.post("/api/v1/sync/push", headers=h, json={"mutations": [stale]}).json()[
+            "results"
+        ][0]["status"]
+        == "conflict"
+    )
+    tombstones = [
+        {
+            **r,
+            "operationID": str(uuid.uuid4()),
+            "expectedRevision": 2 if r is contact else 1,
+            "deleted": True,
+        }
+        for r in reversed(records)
+    ]
+    result = client.post("/api/v1/sync/push", headers=h, json={"mutations": tombstones})
+    assert result.status_code == 200
+    assert all(r["record"]["deleted"] for r in result.json()["results"])
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"title": " "},
+        {"contactType": "Invalid"},
+        {"identityType": "Invalid"},
+        {"mobiles": "0501234567"},
+    ],
+)
+def test_crm_rejects_invalid_contact(client, body):
+    result = client.post(
+        "/api/v1/sync/push",
+        headers=headers(client),
+        json={"mutations": [crm_contact(**body)]},
+    )
+    assert result.status_code == 422
+
+
+def test_crm_rejects_dangling_references_and_bad_dates(client):
+    h = headers(client)
+    action = mutation(
+        kind="crm_actions",
+        body={
+            "title": "Call",
+            "contactID": str(uuid.uuid4()),
+            "actionType": "Phone call",
+            "date": "2026-10-20T10:00:00Z",
+        },
+    )
+    assert (
+        client.post(
+            "/api/v1/sync/push", headers=h, json={"mutations": [action]}
+        ).status_code
+        == 422
+    )
+    contact = crm_contact()
+    assert (
+        client.post(
+            "/api/v1/sync/push", headers=h, json={"mutations": [contact]}
+        ).status_code
+        == 200
+    )
+    action["body"]["contactID"] = contact["id"]
+    for key, value in [
+        ("actionType", "Other"),
+        ("date", "yesterday"),
+        ("reminderDate", "2026-10-21"),
+    ]:
+        invalid = {**action, "body": {**action["body"], key: value}}
+        assert (
+            client.post(
+                "/api/v1/sync/push", headers=h, json={"mutations": [invalid]}
+            ).status_code
+            == 422
+        )
+    link = mutation(
+        kind="crm_attachments",
+        body={"ownerID": contact["id"], "fileID": str(uuid.uuid4())},
+    )
+    assert (
+        client.post(
+            "/api/v1/sync/push", headers=h, json={"mutations": [link]}
+        ).status_code
+        == 422
     )

@@ -109,8 +109,10 @@ actor API {
         contentType: contentType)
     }
     guard (200..<300).contains(http.statusCode) else {
+      let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
       throw CompanionError.message(
-        String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
+        payload?["detail"] as? String
+          ?? String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
     }
     return data
   }

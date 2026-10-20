@@ -90,7 +90,7 @@ enum TaskCompletion {
 }
 enum AttachmentFile {
   static func link(owner: Item, fileID: String) -> Item {
-    let kind =
+    let kind = ["crm_contacts", "crm_actions"].contains(owner.kind) ? "crm_attachments" :
       owner.kind == "tasks"
       ? "task_attachments" : owner.kind == "notes" ? "note_attachments" : "reminder_attachments"
     return Item(kind: kind, body: ["ownerID": owner.id, "fileID": fileID])

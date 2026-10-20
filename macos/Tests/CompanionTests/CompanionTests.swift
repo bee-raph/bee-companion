@@ -252,23 +252,23 @@ final class PageIsolationTests: XCTestCase {
   func testEveryPageTitleInEveryLanguage() {
     let titles: [AppLanguage: [String]] = [
       .english: [
-        "Today", "Tasks", "Files", "Notes", "Agenda", "Alarms", "Stocks", "RSS Reader", "Archive",
+        "Today", "Tasks", "Files", "CRM", "Notes", "Agenda", "Alarms", "Stocks", "RSS Reader", "Archive",
         "Settings",
       ],
       .hebrew: [
-        "היום", "משימות", "קבצים", "הערות", "סדר יום", "תזכורות", "מניות", "קורא RSS", "ארכיון",
+        "היום", "משימות", "קבצים", "CRM", "הערות", "סדר יום", "תזכורות", "מניות", "קורא RSS", "ארכיון",
         "הגדרות",
       ],
       .french: [
-        "Aujourd’hui", "Tâches", "Fichiers", "Notes", "Agenda", "Rappels", "Marchés", "Lecteur RSS",
+        "Aujourd’hui", "Tâches", "Fichiers", "CRM", "Notes", "Agenda", "Rappels", "Marchés", "Lecteur RSS",
         "Archives", "Réglages",
       ],
       .russian: [
-        "Сегодня", "Задачи", "Файлы", "Заметки", "Календарь", "Напоминания", "Акции", "RSS-лента",
+        "Сегодня", "Задачи", "Файлы", "CRM", "Заметки", "Календарь", "Напоминания", "Акции", "RSS-лента",
         "Архив", "Настройки",
       ],
       .spanish: [
-        "Hoy", "Tareas", "Archivos", "Notas", "Agenda", "Recordatorios", "Acciones", "Lector RSS",
+        "Hoy", "Tareas", "Archivos", "CRM", "Notas", "Agenda", "Recordatorios", "Acciones", "Lector RSS",
         "Archivo", "Configuración",
       ],
     ]

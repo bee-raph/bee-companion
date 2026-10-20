@@ -27,6 +27,9 @@ root.mkdir(parents=True, exist_ok=True)
 ph = PasswordHasher()
 attempts = defaultdict(deque)
 KINDS = {
+    "crm_contacts",
+    "crm_actions",
+    "crm_attachments",
     "tasks",
     "notes",
     "folders",
@@ -189,6 +192,13 @@ def push(payload: Push):
 
                 try:
                     validate_settings(m.body)
+                except ValueError as error:
+                    raise HTTPException(422, str(error))
+            if m.kind.startswith("crm_") and not m.deleted:
+                from .crm import validate_crm
+
+                try:
+                    validate_crm(m.kind, m.body, db)
                 except ValueError as error:
                     raise HTTPException(422, str(error))
             if m.kind not in KINDS:

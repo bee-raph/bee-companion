@@ -150,6 +150,7 @@ struct ContentView: View {
         case .tasks: ItemListView(kind: "tasks", query: query)
         case .notes: ItemListView(kind: "notes", query: query)
         case .files: FilesView(query: query)
+        case .crm: CRMView(query: query)
         case .alarms: ItemListView(kind: "reminders", query: query)
         case .archive: ItemListView(kind: nil, query: query, archived: true)
         case .agenda: AgendaView()
