@@ -32,9 +32,52 @@ struct StocksView: View {
   @State var quotes: [QuoteResponse.Quote] = []
   @State var message = ""
   @State var searchGeneration = 0
+  @State private var selectedStock: String?
+  @FocusState private var searchFocused: Bool
   var watchlist: [Item] {
     model.items.filter { $0.kind == "watchlist_items" && !$0.deleted }.sorted {
       Int($0.body["order"] ?? "0") ?? 0 < Int($1.body["order"] ?? "0") ?? 0
+    }
+  }
+  private var watchlistRows: some View {
+    ForEach(watchlist.prefix(compact ? 5 : 100)) { item in
+      HStack {
+        Button(item.body["symbol"] ?? item.title) { open(item) }.buttonStyle(.link)
+        Text(item.title).lineLimit(1)
+        Spacer()
+        if let quote = quotes.first(where: { $0.symbol == item.body["symbol"] }) {
+          Text(quote.price.map { String(format: "%.4f", $0) } ?? L10n.text("—")).monospacedDigit()
+          Text(quote.change.map { String(format: "%+.4f", $0) } ?? L10n.text("—"))
+            .monospacedDigit()
+          Text(quote.changePercent.map { String(format: "%+.2f%%", $0) } ?? L10n.text("—"))
+            .foregroundStyle(
+              (quote.changePercent ?? 0) >= 0 ? .green : .red)
+          VStack(alignment: .trailing) {
+            Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? L10n.text("Unavailable"))
+            if let error = quote.error { Text(L10n.message(error)) }
+          }.font(.caption)
+        } else {
+          Text(L10n.text("—"))
+        }
+        if !compact {
+          TextField(
+            L10n.text("TradingView symbol"),
+            text: Binding(
+              get: { item.body["tradingView"] ?? "" },
+              set: { value in
+                var copy = item
+                copy.body["tradingView"] = value
+                model.save(copy)
+              })
+          ).frame(width: 130)
+          Button(L10n.text("↑")) {
+            var copy = item
+            copy.body["order"] = String((Int(item.body["order"] ?? "0") ?? 0) - 1)
+            model.save(copy)
+          }
+
+        }
+      }.tag(item.id).padding(.vertical, 3)
     }
   }
   private var content: some View {
@@ -49,78 +92,60 @@ struct StocksView: View {
       }
       if !compact {
         HStack {
-          TextField(L10n.text("Search instruments"), text: $query)
+          TextField(L10n.text("Search instruments"), text: $query).focused($searchFocused)
           Button(L10n.text("Search")) { Task { await search() } }
         }
-        ForEach(found.prefix(10)) { instrument in
-          VStack(spacing: 0) {
-            HStack {
-              VStack(alignment: .leading, spacing: 3) {
-                Text(instrument.symbol + " · " + (instrument.name ?? ""))
-                if let category = instrument.category {
-                  Text(category).font(.caption).foregroundStyle(.secondary)
-                }
+        if !found.isEmpty {
+          List {
+            ForEach(found.prefix(10)) { instrument in
+              VStack(spacing: 0) {
+                HStack {
+                  VStack(alignment: .leading, spacing: 3) {
+                    Text(instrument.symbol + " · " + (instrument.name ?? ""))
+                    if let category = instrument.category {
+                      Text(category).font(.caption).foregroundStyle(.secondary)
+                    }
+                  }
+                  Spacer()
+                  Button(L10n.text("Follow")) {
+                    model.save(
+                      Item(
+                        kind: "watchlist_items",
+                        body: [
+                          "title": instrument.name ?? instrument.symbol,
+                          "symbol": instrument.symbol,
+                          "order": String(watchlist.count), "tradingView": instrument.symbol,
+                        ]))
+                    found = []
+                    Task { await refresh() }
+                  }.controlSize(.small)
+                }.padding(.horizontal, 14).padding(.vertical, 12)
+                Divider()
               }
-              Spacer()
-              Button(L10n.text("Follow")) {
-                model.save(
-                  Item(
-                    kind: "watchlist_items",
-                    body: [
-                      "title": instrument.name ?? instrument.symbol, "symbol": instrument.symbol,
-                      "order": String(watchlist.count), "tradingView": instrument.symbol,
-                    ]))
-                found = []
-                Task { await refresh() }
-              }.buttonStyle(.borderedProminent)
-            }.padding(.horizontal, 14).padding(.vertical, 12)
-            Divider()
-          }.background(BeeTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+            }
+          }.listStyle(.inset(alternatesRowBackgrounds: true))
+            .frame(height: CGFloat(min(found.count, 5)) * 64)
         }
       }
       if !message.isEmpty { Text(L10n.message(message)).font(.caption).foregroundStyle(.secondary) }
-      ForEach(watchlist.prefix(compact ? 5 : 100)) { item in
-        HStack {
-          Button(item.body["symbol"] ?? item.title) { open(item) }.buttonStyle(.link)
-          Text(item.title).lineLimit(1)
-          Spacer()
-          if let quote = quotes.first(where: { $0.symbol == item.body["symbol"] }) {
-            Text(quote.price.map { String(format: "%.4f", $0) } ?? L10n.text("—")).monospacedDigit()
-            Text(quote.change.map { String(format: "%+.4f", $0) } ?? L10n.text("—"))
-              .monospacedDigit()
-            Text(quote.changePercent.map { String(format: "%+.2f%%", $0) } ?? L10n.text("—"))
-              .foregroundStyle(
-                (quote.changePercent ?? 0) >= 0 ? .green : .red)
-            VStack(alignment: .trailing) {
-              Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? L10n.text("Unavailable"))
-              if let error = quote.error { Text(L10n.message(error)) }
-            }.font(.caption)
-          } else {
-            Text(L10n.text("—"))
-          }
-          if !compact {
-            TextField(
-              L10n.text("TradingView symbol"),
-              text: Binding(
-                get: { item.body["tradingView"] ?? "" },
-                set: { value in
-                  var copy = item
-                  copy.body["tradingView"] = value
-                  model.save(copy)
-                })
-            ).frame(width: 130)
-            Button(L10n.text("↑")) {
-              var copy = item
-              copy.body["order"] = String((Int(item.body["order"] ?? "0") ?? 0) - 1)
-              model.save(copy)
+      if compact {
+        watchlistRows
+      } else {
+        VStack(spacing: 0) {
+          List(selection: $selectedStock) { watchlistRows }
+            .listStyle(.inset(alternatesRowBackgrounds: true)).frame(minHeight: 180)
+          CollectionControls(
+            addTitle: "Search instruments", removeTitle: "Remove",
+            canRemove: watchlist.contains { $0.id == selectedStock },
+            add: { searchFocused = true },
+            remove: {
+              guard var item = watchlist.first(where: { $0.id == selectedStock }) else { return }
+              item.deleted = true
+              model.save(item)
+              selectedStock = nil
             }
-            Button(L10n.text("Remove")) {
-              var copy = item
-              copy.deleted = true
-              model.save(copy)
-            }
-          }
-        }
+          ) { EmptyView() }
+        }.overlay(Rectangle().strokeBorder(.separator, lineWidth: 0.5))
       }
       if watchlist.isEmpty {
         Text(L10n.text("Search for an instrument to start following prices.")).foregroundStyle(

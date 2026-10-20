@@ -496,7 +496,7 @@ struct AgendaGrid: View {
     return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
   }
   var body: some View {
-    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 5) {
+    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1) {
       ForEach(dates, id: \.self) { day in
         Button {
           date = day
@@ -512,13 +512,20 @@ struct AgendaGrid: View {
                   && $0.date.map { Calendar.current.isDate($0, inSameDayAs: day) } == true
               }.count
             Text(count == 0 ? " " : L10n.format("%d items", count)).font(.caption2)
-          }.frame(maxWidth: .infinity).padding(5)
+          }.frame(maxWidth: .infinity).padding(7)
+            .foregroundStyle(
+              Calendar.current.isDate(date, inSameDayAs: day) ? Color.white : Color.primary
+            )
             .background(
               Calendar.current.isDate(date, inSameDayAs: day)
-                ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.06),
-              in: RoundedRectangle(cornerRadius: 6))
+                ? Color(nsColor: .selectedContentBackgroundColor)
+                : Color(nsColor: .controlBackgroundColor)
+            )
+            .contentShape(Rectangle())
         }.buttonStyle(.plain)
+          .accessibilityAddTraits(
+            Calendar.current.isDate(date, inSameDayAs: day) ? .isSelected : [])
       }
-    }
+    }.padding(1).background(.separator)
   }
 }

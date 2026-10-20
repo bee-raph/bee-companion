@@ -233,7 +233,7 @@ struct ItemListView: View {
   }
   var body: some View {
     HSplitView {
-      VStack {
+      VStack(spacing: 0) {
         if kind == "tasks" {
           Picker(L10n.text("View"), selection: $filter) {
             ForEach(["All", "Today", "Upcoming", "Overdue"], id: \.self) {
@@ -270,14 +270,24 @@ struct ItemListView: View {
                 }
               }
             }
-          }.tag(item.id).padding(.vertical, 9)
+          }.tag(item.id).padding(.vertical, 4)
         }
-        if kind == "notes" { Button(L10n.text("Import Markdown / RTF")) { model.importNotes() } }
-        if let kind {
-          Button(
-            L10n.text(kind == "tasks" ? "Add task" : kind == "notes" ? "Add note" : "Add alarm"),
-            systemImage: "plus"
-          ) { selected = model.add(kind).id }.padding()
+        .listStyle(.inset(alternatesRowBackgrounds: true))
+        CollectionControls(
+          addTitle: kind == "tasks" ? "Add task" : kind == "notes" ? "Add note" : "Add alarm",
+          removeTitle: "Trash", canAdd: kind != nil,
+          canRemove: rows.contains { $0.id == selected },
+          add: { if let kind { selected = model.add(kind).id } },
+          remove: {
+            guard var item = rows.first(where: { $0.id == selected }) else { return }
+            item.deleted = true
+            model.save(item)
+            selected = nil
+          }
+        ) {
+          if kind == "notes" {
+            Button(L10n.text("Import Markdown / RTF")) { model.importNotes() }
+          }
         }
       }.frame(minWidth: 270, idealWidth: 330).background(BeeTheme.surface)
       if let item = model.items.first(where: { $0.id == selected }) {

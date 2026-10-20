@@ -16,6 +16,8 @@ Choose **Settings → Language**: English (default), Hebrew, French, Russian, or
 
 ### Today and work tools
 
+Lists and tables use native macOS selection, alternating rows, and compact **+ / −** controls below the collection. Select an item to enable removal. Tasks, notes, alarms, and library files move to Trash; removing a feed or followed instrument removes it from that list. In Files, **+** imports files and **New folder** creates a folder; in Stocks, **+** focuses instrument search.
+
 - **Today:** a dashboard of tasks, upcoming reminders, three world clocks, the Hebrew calendar, zmanim, and followed instruments. The dashboard expands across the available window width, including when maximized. Clocks and displayed timestamps omit seconds. The zmanim strip advances independently to the next upcoming time.
 - **Tasks:** title, description, due date or date/time, To do/In progress/Done/Cancelled status, independent archive state, file attachments, linked reminders, TXT/RTF export, and sharing.
 - **Files:** an app-owned folder hierarchy with upload/download, resumable transfers, checksums, immutable file versions, rename/move/duplicate, trash/restore, confirmed permanent deletion, offline copies, Quick Look, default-app opening, and detection of externally edited working copies. Moving a file preserves its attachments.
@@ -230,6 +232,9 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 ---
 
 <a id="hebrew"></a>
+
+רשימות וטבלאות משתמשות בבחירה ובשורות מתחלפות בסגנון macOS, עם כפתורי **+ / −** בתחתית הרשימה. בחרו פריט כדי לאפשר הסרה. משימות, הערות, תזכורות וקבצי הספרייה מועברים לסל; הזנות ומניות מוסרות מהרשימה. בקבצים, **+** מייבא קבצים ו־**תיקייה חדשה** יוצר תיקייה; במניות, **+** מעביר את המיקוד לחיפוש.
+
 
 ### שפת הממשק
 

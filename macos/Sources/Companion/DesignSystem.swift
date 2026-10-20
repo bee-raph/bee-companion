@@ -97,3 +97,30 @@ enum BeeDisplayTime {
     return value
   }
 }
+
+/// Standard macOS collection controls, kept next to the collection they operate on.
+struct CollectionControls<Actions: View>: View {
+  var addTitle: String
+  var removeTitle: String
+  var canAdd = true
+  var canRemove: Bool
+  var add: () -> Void
+  var remove: () -> Void
+  @ViewBuilder var actions: Actions
+  var body: some View {
+    VStack(spacing: 0) {
+      Divider()
+      HStack(spacing: 0) {
+        Button(action: add) { Image(systemName: "plus").frame(width: 22, height: 18) }
+          .help(L10n.text(addTitle)).accessibilityLabel(L10n.text(addTitle)).disabled(!canAdd)
+        Divider().frame(height: 16).padding(.horizontal, 3)
+        Button(action: remove) { Image(systemName: "minus").frame(width: 22, height: 18) }
+          .help(L10n.text(removeTitle)).accessibilityLabel(L10n.text(removeTitle)).disabled(
+            !canRemove)
+        Spacer()
+        actions
+      }.buttonStyle(.borderless).controlSize(.small).padding(.horizontal, 8).padding(.vertical, 5)
+        .background(.bar)
+    }
+  }
+}

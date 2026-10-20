@@ -93,6 +93,7 @@ struct ReadingSettingsView: View {
   @State var stocks = Set<String>()
   @State var message = ""
   @State var editingFeed: FeedConfiguration?
+  @State private var selectedFeed: String?
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       Text(L10n.text("RSS & Shabbat mode")).font(.title2)
@@ -101,23 +102,30 @@ struct ReadingSettingsView: View {
           "Configure up to three public RSS or Atom feeds. These preferences sync with your backend."
         )
       ).font(.caption).foregroundStyle(.secondary)
-      ForEach(feeds) { feed in
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(feed.title.isEmpty ? L10n.text("Untitled feed") : feed.title).font(.headline)
-            Text(feed.url).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+      VStack(spacing: 0) {
+        List(selection: $selectedFeed) {
+          ForEach(feeds) { feed in
+            HStack {
+              VStack(alignment: .leading, spacing: 3) {
+                Text(feed.title.isEmpty ? L10n.text("Untitled feed") : feed.title)
+                Text(feed.url).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+              }
+              Spacer()
+              Button(L10n.text("Edit")) { editingFeed = feed }.controlSize(.small)
+            }.padding(.vertical, 3).tag(feed.id)
           }
-          Spacer()
-          Button(L10n.text("Edit")) { editingFeed = feed }
-          Button(L10n.text("Remove"), role: .destructive) {
-            feeds.removeAll { $0.id == feed.id }
+        }.listStyle(.inset(alternatesRowBackgrounds: true)).frame(height: 150)
+        CollectionControls(
+          addTitle: "Add feed", removeTitle: "Remove", canAdd: feeds.count < 3,
+          canRemove: feeds.contains { $0.id == selectedFeed },
+          add: { editingFeed = FeedConfiguration() },
+          remove: {
+            feeds.removeAll { $0.id == selectedFeed }
+            selectedFeed = nil
             saveFeeds()
           }
-        }.padding(.vertical, 6)
-      }
-      Button(L10n.text("Add feed"), systemImage: "plus") { editingFeed = FeedConfiguration() }
-        .disabled(
-          feeds.count >= 3)
+        ) { EmptyView() }
+      }.overlay(Rectangle().strokeBorder(.separator, lineWidth: 0.5))
       Picker(L10n.text("Automatic refresh"), selection: $refresh) {
         ForEach([60, 120, 300, 600, 900, 1800, 3600], id: \.self) {
           Text(L10n.format("%d min", $0 / 60)).tag($0)

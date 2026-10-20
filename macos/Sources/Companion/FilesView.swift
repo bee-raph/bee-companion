@@ -18,19 +18,13 @@ struct FilesView: View {
     }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
   }
   var body: some View {
-    VStack(alignment: .leading) {
+    VStack(alignment: .leading, spacing: 0) {
       HStack {
         Button(L10n.text("Root")) { parent = "" }
         if !parent.isEmpty { Text(model.items.first { $0.id == parent }?.title ?? "Folder") }
         Spacer()
         Toggle(L10n.text("Trash"), isOn: $trash)
-        Button(L10n.text("New folder")) {
-          let folder = Item(kind: "folders", body: ["title": "New folder", "parent": parent])
-          model.save(folder)
-          selected = folder.id
-          name = folder.title
-        }
-        Button(L10n.text("Upload")) { model.importFile(parent: parent) }
+
       }.padding()
       Table(rows, selection: $selected) {
         TableColumn(L10n.text("Name")) { item in
@@ -58,6 +52,27 @@ struct FilesView: View {
                 ? L10n.text("On this Mac") : L10n.text("On server"))
         }
       }
+      .tableStyle(.inset(alternatesRowBackgrounds: true))
+      CollectionControls(
+        addTitle: "Upload files", removeTitle: "Trash", canAdd: !trash,
+        canRemove: !trash && rows.contains { $0.id == selected },
+        add: { model.importFile(parent: parent) },
+        remove: {
+          guard var item = rows.first(where: { $0.id == selected }) else { return }
+          item.deleted = true
+          model.save(item)
+          selected = nil
+        }
+      ) {
+        Button(L10n.text("New folder")) {
+          let folder = Item(
+            kind: "folders", body: ["title": L10n.text("New folder"), "parent": parent])
+          model.save(folder)
+          selected = folder.id
+          name = folder.title
+        }.disabled(trash)
+      }
+
       if let item = model.items.first(where: { $0.id == selected }) {
         VStack(alignment: .leading) {
           HStack {
