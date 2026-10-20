@@ -309,7 +309,10 @@
     "Numbered list": "Numbered list",
     "Horizontal separator": "Horizontal separator",
     "Rich text with images": "Rich text with images",
-    "Choose an image smaller than 20 MB.": "Choose an image smaller than 20 MB."
+    "Choose an image smaller than 20 MB.": "Choose an image smaller than 20 MB.",
+    "Delete note %@?": "Delete note %@?",
+    "Delete reminder %@?": "Delete reminder %@?",
+    "This item will be moved to Trash. Its attached library files will be kept.": "This item will be moved to Trash. Its attached library files will be kept."
   },
   "he": {
     "Today": "היום",
@@ -621,7 +624,10 @@
     "Numbered list": "רשימה ממוספרת",
     "Horizontal separator": "קו הפרדה אופקי",
     "Rich text with images": "טקסט עשיר עם תמונות",
-    "Choose an image smaller than 20 MB.": "בחרו תמונה שגודלה קטן מ־20 MB."
+    "Choose an image smaller than 20 MB.": "בחרו תמונה שגודלה קטן מ־20 MB.",
+    "Delete note %@?": "למחוק את ההערה %@?",
+    "Delete reminder %@?": "למחוק את התזכורת %@?",
+    "This item will be moved to Trash. Its attached library files will be kept.": "הפריט יועבר לסל. קבצי הספרייה המצורפים אליו יישמרו."
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -933,7 +939,10 @@
     "Numbered list": "Liste numérotée",
     "Horizontal separator": "Séparateur horizontal",
     "Rich text with images": "Texte enrichi avec images",
-    "Choose an image smaller than 20 MB.": "Choisissez une image de moins de 20 Mo."
+    "Choose an image smaller than 20 MB.": "Choisissez une image de moins de 20 Mo.",
+    "Delete note %@?": "Supprimer la note %@ ?",
+    "Delete reminder %@?": "Supprimer le rappel %@ ?",
+    "This item will be moved to Trash. Its attached library files will be kept.": "Cet élément sera déplacé dans la corbeille. Ses fichiers joints seront conservés."
   },
   "ru": {
     "Today": "Сегодня",
@@ -1245,7 +1254,10 @@
     "Numbered list": "Нумерованный список",
     "Horizontal separator": "Горизонтальный разделитель",
     "Rich text with images": "Форматированный текст с изображениями",
-    "Choose an image smaller than 20 MB.": "Выберите изображение размером менее 20 МБ."
+    "Choose an image smaller than 20 MB.": "Выберите изображение размером менее 20 МБ.",
+    "Delete note %@?": "Удалить заметку %@?",
+    "Delete reminder %@?": "Удалить напоминание %@?",
+    "This item will be moved to Trash. Its attached library files will be kept.": "Элемент будет перемещён в корзину. Прикреплённые файлы библиотеки сохранятся."
   },
   "es": {
     "Today": "Hoy",
@@ -1557,6 +1569,9 @@
     "Numbered list": "Lista numerada",
     "Horizontal separator": "Separador horizontal",
     "Rich text with images": "Texto enriquecido con imágenes",
-    "Choose an image smaller than 20 MB.": "Elige una imagen de menos de 20 MB."
+    "Choose an image smaller than 20 MB.": "Elige una imagen de menos de 20 MB.",
+    "Delete note %@?": "¿Eliminar la nota %@?",
+    "Delete reminder %@?": "¿Eliminar el recordatorio %@?",
+    "This item will be moved to Trash. Its attached library files will be kept.": "El elemento se moverá a la papelera. Sus archivos adjuntos de la biblioteca se conservarán."
   }
 }

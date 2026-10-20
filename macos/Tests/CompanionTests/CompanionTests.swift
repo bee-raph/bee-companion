@@ -476,3 +476,60 @@ final class EditorRegressionTests: XCTestCase {
     XCTAssertEqual(saved, "Final unsaved text")
   }
 }
+
+final class RichNotesWorkflowTests: XCTestCase {
+  func testNoteAndReminderDeletionRequireConfirmation() {
+    XCTAssertTrue(DeletionPolicy.requiresConfirmation(Item(kind: "notes")))
+    XCTAssertTrue(DeletionPolicy.requiresConfirmation(Item(kind: "reminders")))
+    XCTAssertFalse(DeletionPolicy.requiresConfirmation(Item(kind: "tasks")))
+    XCTAssertFalse(DeletionPolicy.requiresConfirmation(Item(kind: "note_attachments")))
+  }
+  @MainActor func testRichTextExportsRealMarkdownAndReopensRich() throws {
+    let bold = NSFont.boldSystemFont(ofSize: 14)
+    let italic = NSFontManager.shared.convert(
+      NSFont.systemFont(ofSize: 14), toHaveTrait: .italicFontMask)
+    let document = NSMutableAttributedString(string: "Hello ")
+    document.append(NSAttributedString(string: "bold", attributes: [.font: bold]))
+    document.append(NSAttributedString(string: " and "))
+    document.append(NSAttributedString(string: "italic", attributes: [.font: italic]))
+    document.append(NSAttributedString(string: "\n• First\n• Second\n────────────────\n"))
+    let markdown = NoteMarkdown.export(document)
+    XCTAssertTrue(markdown.contains("**bold**"))
+    XCTAssertTrue(markdown.contains("*italic*"))
+    XCTAssertTrue(markdown.contains("- First\n- Second"))
+    XCTAssertTrue(markdown.contains("\n---\n"))
+    let reopened = NoteMarkdown.importText("**שלום** and *world*")
+    XCTAssertEqual(reopened.string, "שלום and world")
+    let font = try XCTUnwrap(reopened.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+  }
+  @MainActor func testMarkdownEmbeddedImageSurvivesRichImportAndExport() throws {
+    let bitmap = try XCTUnwrap(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 1, pixelsHigh: 1, bitsPerSample: 8, samplesPerPixel: 4,
+        hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+      ))
+    let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+    let source = "Before ![image](data:image/png;base64," + png.base64EncodedString() + ") after"
+    let document = NoteMarkdown.importText(source)
+    XCTAssertNotNil(document.attribute(.attachment, at: 7, effectiveRange: nil))
+    XCTAssertEqual(NoteMarkdown.export(document), source)
+  }
+  @MainActor func testBackgroundSnapshotDoesNotReadLaterEditorChanges() async throws {
+    let storage = NSMutableAttributedString(
+      string: "Saved snapshot", attributes: [.font: NSFont.boldSystemFont(ofSize: 18)])
+    let snapshot = NoteSnapshot(storage, rich: true)
+    storage.mutableString.setString("Later typing")
+    let done = expectation(description: "Encoded off the main thread")
+    NoteSnapshot.queue.async {
+      XCTAssertFalse(Thread.isMainThread)
+      do {
+        let encoded = try snapshot.encode()
+        XCTAssertEqual(encoded.text, "Saved snapshot")
+        XCTAssertFalse(encoded.rtf.isEmpty)
+      } catch { XCTFail(error.localizedDescription) }
+      done.fulfill()
+    }
+    await fulfillment(of: [done], timeout: 5)
+  }
+}

@@ -131,3 +131,12 @@ struct WorkListScope {
       && (kind == nil || item.kind == kind)
   }
 }
+
+enum DeletionPolicy {
+  static func requiresConfirmation(_ item: Item) -> Bool {
+    ["notes", "reminders"].contains(item.kind)
+  }
+}
+extension Notification.Name {
+  static let flushNoteEdits = Notification.Name("BeeCompanion.flushNoteEdits")
+}

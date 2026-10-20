@@ -197,6 +197,7 @@ struct NoteTextEditor: NSViewRepresentable {
   var rich: Bool
   var editor: NoteEditing
   var commit: ((String, String, String) -> Void)? = nil
+  var initialMarkdown: String? = nil
   func makeCoordinator() -> Coordinator { Coordinator(self) }
   func makeNSView(context: Context) -> NSScrollView {
     let scroll = NSTextView.scrollableTextView()
@@ -210,6 +211,8 @@ struct NoteTextEditor: NSViewRepresentable {
     context.coordinator.textView = view
     if rich, let value = NoteDocument.decode(rtf: rtf, rtfd: rtfd) {
       view.textStorage?.setAttributedString(value)
+    } else if let initialMarkdown {
+      view.textStorage?.setAttributedString(NoteMarkdown.importText(initialMarkdown))
     } else {
       view.string = text
     }
@@ -231,6 +234,7 @@ struct NoteTextEditor: NSViewRepresentable {
     weak var textView: NSTextView?
     private var timer: Timer?
     private var dirty = false
+    private var generation = 0
     init(_ parent: NoteTextEditor) {
       self.parent = parent
       super.init()
@@ -239,6 +243,8 @@ struct NoteTextEditor: NSViewRepresentable {
       )
       NotificationCenter.default.addObserver(
         self, selector: #selector(flush), name: NSWindow.willCloseNotification, object: nil)
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(flush), name: .flushNoteEdits, object: nil)
     }
     deinit {
       timer?.invalidate()
@@ -252,38 +258,46 @@ struct NoteTextEditor: NSViewRepresentable {
     }
     func textDidChange(_ notification: Notification) {
       dirty = true
+      generation += 1
       timer?.invalidate()
-      timer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: false) { [weak self] _ in
-        MainActor.assumeIsolated { self?.flush() }
+      timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: false) { [weak self] _ in
+        MainActor.assumeIsolated { self?.serializeInBackground() }
       }
     }
     func textDidEndEditing(_ notification: Notification) { flush() }
-    @objc func flush() {
+    func serializeInBackground() {
       timer?.invalidate()
       timer = nil
       guard dirty, let view = textView else { return }
-      dirty = false
-      let text = view.string
-      var rtf = parent.rtf
-      var rtfd = parent.rtfd
-      if parent.rich {
-        let range = NSRange(location: 0, length: view.string.utf16.count)
-        rtf = view.rtf(from: range)?.base64EncodedString() ?? ""
-        var attachments = false
-        view.textStorage?.enumerateAttribute(.attachment, in: range) { value, _, stop in
-          if value != nil {
-            attachments = true
-            stop.pointee = true
-          }
+      let revision = generation
+      let snapshot = NoteSnapshot(view.attributedString(), rich: parent.rich)
+      NoteSnapshot.queue.async { [weak self] in
+        let result = Result { try snapshot.encode() }
+        DispatchQueue.main.async { [weak self] in
+          guard let self, self.dirty, self.generation == revision else { return }
+          self.finish(result)
         }
-        rtfd = attachments ? (view.rtfd(from: range)?.base64EncodedString() ?? "") : ""
       }
-      if let commit = parent.commit {
-        commit(text, rtf, rtfd)
-      } else {
-        parent.text = text
-        parent.rtf = rtf
-        parent.rtfd = rtfd
+    }
+    @objc func flush() {
+      timer?.invalidate()
+      timer = nil
+      generation += 1  // Invalidate outstanding background snapshots before closing.
+      guard dirty, let view = textView else { return }
+      finish(Result { try NoteSnapshot(view.attributedString(), rich: parent.rich).encode() })
+    }
+    private func finish(_ result: Result<NoteSnapshot.Encoded, Error>) {
+      switch result {
+      case .success(let value):
+        dirty = false
+        if let commit = parent.commit {
+          commit(value.text, value.rtf, value.rtfd)
+        } else {
+          parent.text = value.text
+          parent.rtf = value.rtf
+          parent.rtfd = value.rtfd
+        }
+      case .failure(let error): NSAlert(error: error).runModal()
       }
     }
   }
@@ -338,5 +352,41 @@ struct NoteMarkdownPreview: View {
         }
       }
     }.frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
+/// Immutable document snapshots are encoded on a serial queue without touching NSTextView.
+final class NoteSnapshot: @unchecked Sendable {
+  struct Encoded: Sendable {
+    let text: String
+    let rtf: String
+    let rtfd: String
+  }
+  static let queue = DispatchQueue(label: "BeeCompanion.noteSerialization", qos: .userInitiated)
+  private let document: NSAttributedString
+  private let rich: Bool
+  init(_ document: NSAttributedString, rich: Bool) {
+    self.document = NSAttributedString(attributedString: document)
+    self.rich = rich
+  }
+  func encode() throws -> Encoded {
+    guard rich else { return Encoded(text: document.string, rtf: "", rtfd: "") }
+    let range = NSRange(location: 0, length: document.length)
+    var images = false
+    document.enumerateAttribute(.attachment, in: range) { value, _, stop in
+      if value != nil {
+        images = true
+        stop.pointee = true
+      }
+    }
+    let rtf = try document.data(
+      from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+    ).base64EncodedString()
+    let rtfd =
+      images
+      ? try document.data(
+        from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd]
+      ).base64EncodedString() : ""
+    return Encoded(text: document.string, rtf: rtf, rtfd: rtfd)
   }
 }

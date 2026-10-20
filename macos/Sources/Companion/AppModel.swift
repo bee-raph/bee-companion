@@ -72,6 +72,24 @@ import SwiftUI
       if !conflicts.isEmpty { conflicts = try store.conflicts() }
     } catch { self.error = error.localizedDescription }
   }
+  @discardableResult func trash(_ item: Item) -> Bool {
+    NotificationCenter.default.post(name: .flushNoteEdits, object: nil)
+    if DeletionPolicy.requiresConfirmation(item) {
+      let alert = NSAlert()
+      alert.messageText = L10n.format(
+        item.kind == "notes" ? "Delete note %@?" : "Delete reminder %@?", item.title)
+      alert.informativeText = L10n.text(
+        "This item will be moved to Trash. Its attached library files will be kept.")
+      alert.alertStyle = .warning
+      alert.addButton(withTitle: L10n.text("Cancel"))
+      alert.addButton(withTitle: L10n.text("Trash"))
+      guard alert.runModal() == .alertSecondButtonReturn else { return false }
+    }
+    var latest = items.first(where: { $0.id == item.id }) ?? item
+    latest.deleted = true
+    save(latest)
+    return true
+  }
   func add(_ kind: String) -> Item {
     let item = Item(
       kind: kind,

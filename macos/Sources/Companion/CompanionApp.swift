@@ -285,10 +285,8 @@ struct ItemListView: View {
           canRemove: rows.contains { $0.id == selected },
           add: { if let kind { selected = model.add(kind).id } },
           remove: {
-            guard var item = rows.first(where: { $0.id == selected }) else { return }
-            item.deleted = true
-            model.save(item)
-            selected = nil
+            guard let item = rows.first(where: { $0.id == selected }) else { return }
+            if model.trash(item) { selected = nil }
           }
         ) {
           if kind == "notes" {
@@ -312,7 +310,6 @@ struct ItemEditor: View {
   @EnvironmentObject var alarms: AlarmService
   @State var item: Item
   @State var dateEnabled = false
-  @State var preview = false
   @State var attachment = ""
   @StateObject private var noteEditing = NoteEditing()
   func text(_ key: String, default value: String = "") -> Binding<String> {
@@ -378,28 +375,14 @@ struct ItemEditor: View {
           Button(L10n.text("Enable notifications")) { Task { await alarms.requestPermission() } }
         }
         if item.kind == "notes" {
-          HStack {
-            Text(L10n.text(item.body["format"] == "rtf" ? "Rich text" : "Markdown")).font(.headline)
-            Spacer()
-            if item.body["format"] != "rtf" { Toggle(L10n.text("Preview"), isOn: $preview) }
-            Button(L10n.text("Convert copy")) { convert() }
-          }
-          if !preview || item.body["format"] == "rtf" {
-            NoteToolbar(editor: noteEditing)
-          }
-          if item.body["format"] == "rtf" {
-            NoteTextEditor(
-              text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: true,
-              editor: noteEditing, commit: commitNote
-            ).frame(minHeight: 320)
-          } else if preview {
-            NoteMarkdownPreview(source: item.body["text"] ?? "")
-          } else {
-            NoteTextEditor(
-              text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: false,
-              editor: noteEditing, commit: commitNote
-            ).frame(minHeight: 320).border(.quaternary)
-          }
+          Text(L10n.text("Rich text")).font(.headline)
+          NoteToolbar(editor: noteEditing)
+          NoteTextEditor(
+            text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: true,
+            editor: noteEditing, commit: commitNote,
+            initialMarkdown: item.body["format"] == "rtf" ? nil : item.body["text"]
+          ).frame(minHeight: 360)
+
         }
         if ["tasks", "notes", "reminders"].contains(item.kind) { attachments }
         Divider()
@@ -407,12 +390,18 @@ struct ItemEditor: View {
           Button(L10n.text("Share with attachments")) { model.shareWithAttachments(item) }
           Menu(L10n.text("Export")) {
             Button(L10n.text("Text")) { Sharing.export(item, format: "txt") }
-            Button(L10n.text("Rich text")) { Sharing.export(item, format: "rtf") }
+            Button(L10n.text("Rich text")) {
+              NotificationCenter.default.post(name: .flushNoteEdits, object: nil)
+              Sharing.export(model.items.first(where: { $0.id == item.id }) ?? item, format: "rtf")
+            }
             if item.body["rtfd"]?.isEmpty == false {
               Button(L10n.text("Rich text with images")) { Sharing.export(item, format: "rtfd") }
             }
             if item.kind == "notes" {
-              Button(L10n.text("Markdown")) { Sharing.export(item, format: "md") }
+              Button(L10n.text("Markdown")) {
+                NotificationCenter.default.post(name: .flushNoteEdits, object: nil)
+                Sharing.export(model.items.first(where: { $0.id == item.id }) ?? item, format: "md")
+              }
             }
           }
           Button(L10n.text("WhatsApp")) { Sharing.whatsApp(item) }
@@ -420,7 +409,7 @@ struct ItemEditor: View {
           Button(L10n.text(item.archived ? "Restore" : "Archive")) {
             item.body["archived"] = String(!item.archived)
           }
-          Button(L10n.text("Trash"), role: .destructive) { item.deleted = true }
+          Button(L10n.text("Trash"), role: .destructive) { model.trash(item) }
         }
       }.padding(32)
     }
@@ -440,10 +429,9 @@ struct ItemEditor: View {
     var updated = item
     updated.revision = model.items.first(where: { $0.id == item.id })?.revision ?? item.revision
     updated.body["text"] = text
-    if updated.body["format"] == "rtf" {
-      updated.body["rtf"] = rtf
-      updated.body["rtfd"] = rtfd
-    }
+    updated.body["format"] = "rtf"
+    updated.body["rtf"] = rtf
+    updated.body["rtfd"] = rtfd
     item = updated
     model.save(updated)
   }
@@ -501,25 +489,5 @@ struct ItemEditor: View {
   var attachmentKind: String {
     item.kind == "tasks"
       ? "task_attachments" : item.kind == "notes" ? "note_attachments" : "reminder_attachments"
-  }
-  func convert() {
-    var copy = item
-    copy.id = UUID().uuidString.lowercased()
-    copy.revision = 0
-    copy.body["title"] = item.title + " (converted)"
-    if item.body["format"] == "rtf" {
-      copy.body["format"] = "markdown"
-      copy.body.removeValue(forKey: "rtf")
-      copy.body.removeValue(forKey: "rtfd")
-    } else {
-      copy.body["format"] = "rtf"
-      let string = NSAttributedString(string: item.body["text"] ?? "")
-      copy.body["rtf"] =
-        (try? string.data(
-          from: NSRange(location: 0, length: string.length),
-          documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]))?
-        .base64EncodedString()
-    }
-    model.save(copy)
   }
 }

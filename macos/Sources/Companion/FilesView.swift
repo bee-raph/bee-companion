@@ -245,6 +245,11 @@ struct FilesView: View {
             from: NSRange(location: 0, length: text.length),
             documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
         }
+      } else if format == "md", item.kind == "notes", item.body["format"] == "rtf",
+        let document = NoteDocument.decode(
+          rtf: item.body["rtf"] ?? "", rtfd: item.body["rtfd"] ?? "")
+      {
+        data = Data(NoteMarkdown.export(document).utf8)
       } else {
         data = Data(plain(item).utf8)
       }
