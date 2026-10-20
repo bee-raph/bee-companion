@@ -68,7 +68,7 @@ import SwiftUI
       kind: kind,
       body: [
         "title": kind == "tasks" ? "New task" : kind == "notes" ? "New note" : "New alarm",
-        "status": "To do", "format": "markdown",
+        "status": "To do", "format": kind == "notes" ? "rtf" : "markdown",
       ])
     save(item)
     return item
@@ -313,9 +313,22 @@ import SwiftUI
     guard panel.runModal() == .OK else { return }
     for url in panel.urls {
       do {
-        let data = try Data(contentsOf: url)
         var item = Item(
           kind: "notes", body: ["title": url.deletingPathExtension().lastPathComponent])
+        if url.pathExtension.lowercased() == "rtfd" {
+          let rich = try NSAttributedString(
+            url: url, options: [.documentType: NSAttributedString.DocumentType.rtfd],
+            documentAttributes: nil)
+          item.body["format"] = "rtf"
+          item.body["rtfd"] = try rich.data(
+            from: NSRange(location: 0, length: rich.length),
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd]
+          ).base64EncodedString()
+          item.body["text"] = rich.string
+          save(item)
+          continue
+        }
+        let data = try Data(contentsOf: url)
         if url.pathExtension.lowercased() == "rtf" {
           guard let rich = NSAttributedString(rtf: data, documentAttributes: nil) else {
             throw CompanionError.message("Invalid RTF")

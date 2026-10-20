@@ -226,7 +226,15 @@ struct FilesView: View {
     guard panel.runModal() == .OK, let url = panel.url else { return }
     do {
       let data: Data
-      if format == "rtf" {
+      if format == "rtfd",
+        let value = NoteDocument.decode(rtf: item.body["rtf"] ?? "", rtfd: item.body["rtfd"] ?? "")
+      {
+        let wrapper = try value.fileWrapper(
+          from: NSRange(location: 0, length: value.length),
+          documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
+        try wrapper.write(to: url, options: .atomic, originalContentsURL: nil)
+        return
+      } else if format == "rtf" {
         if item.kind == "notes", let stored = item.body["rtf"],
           let rich = Data(base64Encoded: stored)
         {

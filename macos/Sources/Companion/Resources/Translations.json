@@ -298,7 +298,18 @@
     "Solar noon": "Solar noon",
     "Candle lighting": "Candle lighting",
     "Havdalah": "Havdalah",
-    "Automatic refresh every %d min · Latest 10 headlines per feed": "Automatic refresh every %d min · Latest 10 headlines per feed"
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Automatic refresh every %d min · Latest 10 headlines per feed",
+    "Bold": "Bold",
+    "Italic": "Italic",
+    "Underline": "Underline",
+    "Font": "Font",
+    "Font size": "Font size",
+    "Insert image": "Insert image",
+    "Bullet list": "Bullet list",
+    "Numbered list": "Numbered list",
+    "Horizontal separator": "Horizontal separator",
+    "Rich text with images": "Rich text with images",
+    "Choose an image smaller than 20 MB.": "Choose an image smaller than 20 MB."
   },
   "he": {
     "Today": "היום",
@@ -599,7 +610,18 @@
     "Solar noon": "חצות היום",
     "Candle lighting": "הדלקת נרות",
     "Havdalah": "הבדלה",
-    "Automatic refresh every %d min · Latest 10 headlines per feed": "רענון אוטומטי כל %d דקות · 10 הכותרות האחרונות בכל הזנה"
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "רענון אוטומטי כל %d דקות · 10 הכותרות האחרונות בכל הזנה",
+    "Bold": "מודגש",
+    "Italic": "נטוי",
+    "Underline": "קו תחתון",
+    "Font": "גופן",
+    "Font size": "גודל גופן",
+    "Insert image": "הוספת תמונה",
+    "Bullet list": "רשימת תבליטים",
+    "Numbered list": "רשימה ממוספרת",
+    "Horizontal separator": "קו הפרדה אופקי",
+    "Rich text with images": "טקסט עשיר עם תמונות",
+    "Choose an image smaller than 20 MB.": "בחרו תמונה שגודלה קטן מ־20 MB."
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -900,7 +922,18 @@
     "Solar noon": "Midi solaire",
     "Candle lighting": "Allumage des bougies",
     "Havdalah": "Havdala",
-    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualisation toutes les %d min · 10 derniers titres par flux"
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualisation toutes les %d min · 10 derniers titres par flux",
+    "Bold": "Gras",
+    "Italic": "Italique",
+    "Underline": "Souligné",
+    "Font": "Police",
+    "Font size": "Taille de police",
+    "Insert image": "Insérer une image",
+    "Bullet list": "Liste à puces",
+    "Numbered list": "Liste numérotée",
+    "Horizontal separator": "Séparateur horizontal",
+    "Rich text with images": "Texte enrichi avec images",
+    "Choose an image smaller than 20 MB.": "Choisissez une image de moins de 20 Mo."
   },
   "ru": {
     "Today": "Сегодня",
@@ -1201,7 +1234,18 @@
     "Solar noon": "Солнечный полдень",
     "Candle lighting": "Зажигание свечей",
     "Havdalah": "Авдала",
-    "Automatic refresh every %d min · Latest 10 headlines per feed": "Обновление каждые %d мин · 10 последних заголовков в каждой ленте"
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Обновление каждые %d мин · 10 последних заголовков в каждой ленте",
+    "Bold": "Полужирный",
+    "Italic": "Курсив",
+    "Underline": "Подчёркнутый",
+    "Font": "Шрифт",
+    "Font size": "Размер шрифта",
+    "Insert image": "Вставить изображение",
+    "Bullet list": "Маркированный список",
+    "Numbered list": "Нумерованный список",
+    "Horizontal separator": "Горизонтальный разделитель",
+    "Rich text with images": "Форматированный текст с изображениями",
+    "Choose an image smaller than 20 MB.": "Выберите изображение размером менее 20 МБ."
   },
   "es": {
     "Today": "Hoy",
@@ -1502,6 +1546,17 @@
     "Solar noon": "Mediodía solar",
     "Candle lighting": "Encendido de velas",
     "Havdalah": "Havdalá",
-    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualización cada %d min · 10 últimos titulares por fuente"
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualización cada %d min · 10 últimos titulares por fuente",
+    "Bold": "Negrita",
+    "Italic": "Cursiva",
+    "Underline": "Subrayado",
+    "Font": "Fuente",
+    "Font size": "Tamaño de fuente",
+    "Insert image": "Insertar imagen",
+    "Bullet list": "Lista con viñetas",
+    "Numbered list": "Lista numerada",
+    "Horizontal separator": "Separador horizontal",
+    "Rich text with images": "Texto enriquecido con imágenes",
+    "Choose an image smaller than 20 MB.": "Elige una imagen de menos de 20 MB."
   }
 }

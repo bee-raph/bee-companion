@@ -28,6 +28,10 @@ Lists and tables use native macOS selection, alternating rows, and compact **+ /
 - **Stocks:** London Strategic Edge instrument search, watchlist, latest available minute candle close, change against the previous completed daily bar, timestamps, and editable TradingView symbol mappings. Prices are derived from candles.
 - **Sharing:** the native share picker, plain-text WhatsApp compose flow, and LocalSend handoff for files. Destination applications must be installed or available. The user confirms recipients and sending; nothing is sent automatically.
 
+### Notes editing toolbar
+
+Notes have a native toolbar for bold, italic, underline, font family, font size, image insertion, bullet/numbered lists, and horizontal separators. Select text before formatting, or apply formatting at the caret for subsequent typing. New notes use rich text by default. Markdown notes keep their source format: bold/italic, lists, separators and images insert source syntax; font controls change the source editor's display font. Images are embedded locally, downscaled to at most 1200 pixels, and synchronized with the note. Rich notes retain image-bearing RTFD data alongside their RTF text; use **Export → Rich text with images** to preserve embedded images outside the app. Standard RTF export remains text-only. Markdown preview renders embedded PNGs without fetching remote images. Library file attachments remain separate from embedded images.
+
 ### Weather and shared location
 
 Today includes local weather: current temperature, daily high/low, feels-like temperature, humidity, and wind. Configure city, latitude, longitude, and time zone once in Settings; Today and Shabbat use the same location and zmanim cache. Weather refreshes every ten minutes on Today; Shabbat uses its configured refresh interval, subject to the backend's ten-minute weather cache. Weather and zmanim load independently of RSS, stocks, and synchronization. Saved conditions remain available offline and are labelled as saved. Open-Meteo provides weather through the backend without an extra API key. Location coordinates are sent to Open-Meteo for weather and Hebcal for zmanim.
@@ -236,6 +240,11 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 ---
 
 <a id="hebrew"></a>
+
+### סרגל עריכת הערות
+
+סרגל העריכה כולל הדגשה, הטיה, קו תחתון, גופן, גודל גופן, הוספת תמונה, רשימת תבליטים, רשימה ממוספרת וקו הפרדה. בחרו טקסט לפני העיצוב או הפעילו עיצוב בנקודת ההקלדה. הערות חדשות משתמשות בטקסט עשיר כברירת מחדל. בהערות Markdown הכפתורים מוסיפים תחביר למקור, ובקרי הגופן משנים את תצוגת עורך המקור. התמונות מוטמעות מקומית, מוקטנות לעד 1200 פיקסלים ומסתנכרנות עם ההערה. הערות עשירות שומרות נתוני RTFD עם תמונות לצד RTF; לשמירת התמונות בייצוא בחרו **ייצוא ← טקסט עשיר עם תמונות**. ייצוא RTF רגיל מכיל טקסט בלבד. תצוגת Markdown מציגה תמונות PNG מוטמעות ללא טעינת תמונות מרוחקות. קבצים מצורפים מהספרייה נפרדים מהתמונות המוטמעות.
+
 
 ### מזג אוויר ומיקום משותף
 

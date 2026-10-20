@@ -310,3 +310,65 @@ final class PageIsolationTests: XCTestCase {
     XCTAssertNil(CollectionSelection.item(nil, in: [original]))
   }
 }
+
+final class NoteEditingTests: XCTestCase {
+  func testListsAndMarkdownSyntax() {
+    XCTAssertEqual(NoteFormatting.list("First\nSecond\n", numbered: true), "1. First\n2. Second\n")
+    XCTAssertEqual(NoteFormatting.list("שלום\nWorld", numbered: false), "• שלום\n• World")
+    XCTAssertEqual(
+      NoteFormatting.list("First\nSecond", numbered: false, markdown: true), "- First\n- Second")
+  }
+  @MainActor func testSelectionFormattingAndMarkdownWrapping() throws {
+    let view = NSTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
+    view.isRichText = true
+    view.string = "Hello שלום"
+    view.font = .systemFont(ofSize: 14)
+    view.setSelectedRange(NSRange(location: 0, length: 5))
+    let editor = NoteEditing()
+    editor.view = view
+    editor.rich = true
+    editor.trait(.boldFontMask, markdown: "**")
+    editor.trait(.italicFontMask, markdown: "*")
+    editor.underline()
+    let attrs = try XCTUnwrap(view.textStorage?.attributes(at: 0, effectiveRange: nil))
+    let font = try XCTUnwrap(attrs[.font] as? NSFont)
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.italicFontMask))
+    XCTAssertEqual(attrs[.underlineStyle] as? Int, NSUnderlineStyle.single.rawValue)
+    XCTAssertEqual(view.string, "Hello שלום")
+    XCTAssertEqual(view.selectedRange(), NSRange(location: 0, length: 5))
+    editor.rich = false
+    editor.wrap("**")
+    XCTAssertEqual(view.string, "**Hello** שלום")
+    XCTAssertEqual(view.selectedRange(), NSRange(location: 2, length: 5))
+  }
+  @MainActor func testImageAndFormattingSurviveDocumentAndOfflineStoreRoundTrip() throws {
+    let bitmap = try XCTUnwrap(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8, samplesPerPixel: 4,
+        hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+      ))
+    let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+    let wrapper = FileWrapper(regularFileWithContents: png)
+    wrapper.preferredFilename = "image.png"
+    let document = NSMutableAttributedString(
+      string: "שלום", attributes: [.font: NSFont.boldSystemFont(ofSize: 24)])
+    document.append(NSAttributedString(attachment: NSTextAttachment(fileWrapper: wrapper)))
+    let data = try document.data(
+      from: NSRange(location: 0, length: document.length),
+      documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString + ".sqlite")
+    let store = try LocalStore(url: url)
+    try store.save(
+      Item(
+        kind: "notes",
+        body: ["format": "rtf", "rtfd": data.base64EncodedString(), "text": document.string]))
+    let stored = try XCTUnwrap(store.all().first)
+    let decoded = try XCTUnwrap(NoteDocument.decode(rtf: "", rtfd: stored.body["rtfd"] ?? ""))
+    XCTAssertEqual(decoded.string, document.string)
+    XCTAssertNotNil(decoded.attribute(.attachment, at: decoded.length - 1, effectiveRange: nil))
+    XCTAssertEqual((decoded.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize, 24)
+    XCTAssertEqual(try store.pending().count, 1)
+  }
+}

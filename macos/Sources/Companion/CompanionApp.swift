@@ -308,6 +308,7 @@ struct ItemEditor: View {
   @State var dateEnabled = false
   @State var preview = false
   @State var attachment = ""
+  @StateObject private var noteEditing = NoteEditing()
   func text(_ key: String, default value: String = "") -> Binding<String> {
     Binding(get: { item.body[key] ?? value }, set: { item.body[key] = $0 })
   }
@@ -377,17 +378,19 @@ struct ItemEditor: View {
             if item.body["format"] != "rtf" { Toggle(L10n.text("Preview"), isOn: $preview) }
             Button(L10n.text("Convert copy")) { convert() }
           }
+          if !preview || item.body["format"] == "rtf" { NoteToolbar(editor: noteEditing) }
           if item.body["format"] == "rtf" {
-            RichEditor(data: text("rtf"), plainText: text("text")).frame(minHeight: 320)
+            NoteTextEditor(
+              text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: true,
+              editor: noteEditing
+            ).frame(minHeight: 320)
           } else if preview {
-            Text(
-              (try? AttributedString(markdown: item.body["text"] ?? ""))
-                ?? AttributedString(item.body["text"] ?? "")
-            ).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+            NoteMarkdownPreview(source: item.body["text"] ?? "")
           } else {
-            TextEditor(text: text("text")).font(.system(.body, design: .monospaced)).frame(
-              minHeight: 320
-            ).border(.quaternary)
+            NoteTextEditor(
+              text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: false,
+              editor: noteEditing
+            ).frame(minHeight: 320).border(.quaternary)
           }
         }
         if ["tasks", "notes", "reminders"].contains(item.kind) { attachments }
@@ -397,6 +400,9 @@ struct ItemEditor: View {
           Menu(L10n.text("Export")) {
             Button(L10n.text("Text")) { Sharing.export(item, format: "txt") }
             Button(L10n.text("Rich text")) { Sharing.export(item, format: "rtf") }
+            if item.body["rtfd"]?.isEmpty == false {
+              Button(L10n.text("Rich text with images")) { Sharing.export(item, format: "rtfd") }
+            }
             if item.kind == "notes" {
               Button(L10n.text("Markdown")) { Sharing.export(item, format: "md") }
             }
@@ -483,6 +489,7 @@ struct ItemEditor: View {
     if item.body["format"] == "rtf" {
       copy.body["format"] = "markdown"
       copy.body.removeValue(forKey: "rtf")
+      copy.body.removeValue(forKey: "rtfd")
     } else {
       copy.body["format"] = "rtf"
       let string = NSAttributedString(string: item.body["text"] ?? "")
@@ -493,41 +500,5 @@ struct ItemEditor: View {
         .base64EncodedString()
     }
     model.save(copy)
-  }
-}
-struct RichEditor: NSViewRepresentable {
-  @Binding var data: String
-  @Binding var plainText: String
-  func makeCoordinator() -> Coordinator { Coordinator(self) }
-  func makeNSView(context: Context) -> NSScrollView {
-    let scroll = NSTextView.scrollableTextView()
-    let text = scroll.documentView as! NSTextView
-    text.isRichText = true
-    text.allowsUndo = true
-    text.usesFontPanel = true
-    text.usesRuler = true
-    text.isAutomaticLinkDetectionEnabled = true
-    text.delegate = context.coordinator
-    text.font = NSFont.systemFont(ofSize: 14)
-    if let value = Data(base64Encoded: data),
-      let rich = NSAttributedString(rtf: value, documentAttributes: nil)
-    {
-      text.textStorage?.setAttributedString(rich)
-    } else {
-      text.string = plainText
-    }
-    return scroll
-  }
-  func updateNSView(_ nsView: NSScrollView, context: Context) { context.coordinator.parent = self }
-  class Coordinator: NSObject, NSTextViewDelegate {
-    var parent: RichEditor
-    init(_ parent: RichEditor) { self.parent = parent }
-    func textDidChange(_ notification: Notification) {
-      guard let text = notification.object as? NSTextView else { return }
-      parent.plainText = text.string
-      parent.data =
-        text.rtf(from: NSRange(location: 0, length: text.string.utf16.count))?.base64EncodedString()
-        ?? ""
-    }
   }
 }
