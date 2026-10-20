@@ -97,6 +97,7 @@ enum Section: String, CaseIterable, Identifiable {
   case rss = "RSS Reader"
   case archive = "Archive"
   case settings = "Settings"
+  static let workspace: [Section] = [.today, .tasks, .notes, .files, .crm, .agenda, .alarms, .stocks, .rss]
   var id: String { rawValue }
   func title(language: AppLanguage? = nil) -> String { L10n.text(rawValue, language: language) }
   var symbol: String {

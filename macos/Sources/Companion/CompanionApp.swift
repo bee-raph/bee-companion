@@ -93,7 +93,7 @@ struct ContentView: View {
         }.padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 23)
         List(selection: $section) {
           SwiftUI.Section(L10n.text("Workspace")) {
-            ForEach([Section.today, .tasks, .notes, .files, .agenda, .alarms, .stocks, .rss]) {
+            ForEach(Section.workspace) {
               item in
               sidebarRow(item)
             }

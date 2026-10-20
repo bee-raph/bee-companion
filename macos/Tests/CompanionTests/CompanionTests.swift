@@ -249,6 +249,12 @@ final class LocationTests: XCTestCase {
 }
 
 final class PageIsolationTests: XCTestCase {
+  func testSidebarIncludesEveryWorkspaceFeature() {
+    XCTAssertTrue(Section.workspace.contains(.crm))
+    XCTAssertEqual(Set(Section.workspace), Set(Section.allCases).subtracting([.archive, .settings]))
+    XCTAssertEqual(Set(Section.workspace).count, Section.workspace.count)
+  }
+
   func testEveryPageTitleInEveryLanguage() {
     let titles: [AppLanguage: [String]] = [
       .english: [
