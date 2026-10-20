@@ -37,13 +37,13 @@ struct StocksView: View {
       Int($0.body["order"] ?? "0") ?? 0 < Int($1.body["order"] ?? "0") ?? 0
     }
   }
-  var body: some View {
+  private var content: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
         BeeSectionHeading(
           title: "Market watch", subtitle: "Your followed instruments", symbol: "chart.xyaxis.line")
         Spacer()
-        Button("Refresh") { Task { await refresh() } }
+        if !compact { Text("Updates automatically").font(.caption).foregroundStyle(.secondary) }
       }
       if !compact {
         HStack {
@@ -51,29 +51,32 @@ struct StocksView: View {
           Button("Search") { Task { await search() } }
         }
         ForEach(found.prefix(10)) { instrument in
-          HStack {
-            VStack(alignment: .leading, spacing: 3) {
-              Text(instrument.symbol + " · " + (instrument.name ?? ""))
-              if let category = instrument.category {
-                Text(category).font(.caption).foregroundStyle(.secondary)
+          VStack(spacing: 0) {
+            HStack {
+              VStack(alignment: .leading, spacing: 3) {
+                Text(instrument.symbol + " · " + (instrument.name ?? ""))
+                if let category = instrument.category {
+                  Text(category).font(.caption).foregroundStyle(.secondary)
+                }
               }
-            }
-            Spacer()
-            Button("Follow") {
-              model.save(
-                Item(
-                  kind: "watchlist_items",
-                  body: [
-                    "title": instrument.name ?? instrument.symbol, "symbol": instrument.symbol,
-                    "order": String(watchlist.count), "tradingView": instrument.symbol,
-                  ]))
-              found = []
-              Task { await refresh() }
-            }
-          }
+              Spacer()
+              Button("Follow") {
+                model.save(
+                  Item(
+                    kind: "watchlist_items",
+                    body: [
+                      "title": instrument.name ?? instrument.symbol, "symbol": instrument.symbol,
+                      "order": String(watchlist.count), "tradingView": instrument.symbol,
+                    ]))
+                found = []
+                Task { await refresh() }
+              }.buttonStyle(.borderedProminent)
+            }.padding(.horizontal, 14).padding(.vertical, 12)
+            Divider()
+          }.background(BeeTheme.surface, in: RoundedRectangle(cornerRadius: 10))
         }
       }
-      Text(message).font(.caption).foregroundStyle(.secondary)
+      if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
       ForEach(watchlist.prefix(compact ? 5 : 100)) { item in
         HStack {
           Button(item.body["symbol"] ?? item.title) { open(item) }.buttonStyle(.link)
@@ -86,7 +89,7 @@ struct StocksView: View {
               (quote.changePercent ?? 0) >= 0 ? .green : .red)
             VStack(alignment: .trailing) {
               Text(quote.timestamp.map(BeeDisplayTime.timestamp) ?? "Unavailable")
-              Text(quote.source ?? quote.error ?? "")
+              if let error = quote.error { Text(error) }
             }.font(.caption)
           } else {
             Text("—")
@@ -118,7 +121,16 @@ struct StocksView: View {
       if watchlist.isEmpty {
         Text("Search for an instrument to start following prices.").foregroundStyle(.secondary)
       }
-    }.padding().task {
+    }.padding()
+  }
+  var body: some View {
+    Group {
+      if compact {
+        content
+      } else {
+        ScrollView { content.frame(maxWidth: .infinity, alignment: .leading) }
+      }
+    }.task(id: watchlist.map { $0.id + ($0.body["symbol"] ?? "") }.joined(separator: ",")) {
       while !Task.isCancelled {
         await refresh()
         try? await Task.sleep(for: .seconds(60))
@@ -158,7 +170,7 @@ struct StocksView: View {
           withAllowedCharacters: .urlQueryAllowed) ?? ""
       let result: QuoteResponse = try await api.request("market/quotes?symbols=" + symbols)
       quotes = result.quotes
-      message = "London Strategic Edge · latest available candles"
+      message = ""
     } catch { message = error.localizedDescription }
   }
 }
@@ -268,7 +280,7 @@ struct SettingsView: View {
         Text(
           "The app saves locally. Docker is required only for backend access and synchronization."
         ).font(.caption)
-      }.formStyle(.grouped).padding()
+      }.formStyle(.grouped).padding().frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }

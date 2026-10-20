@@ -150,7 +150,7 @@ struct ContentView: View {
               shabbat.show(model)
             } label: {
               Label("Shabbat mode", systemImage: "moon.stars")
-            }.help("Open Shabbat mode · ⌘⇧S")
+            }.labelStyle(.titleAndIcon).help("Open Shabbat mode · ⌘⇧S")
             Menu {
               Button("New task", systemImage: "checklist") {
                 _ = model.add("tasks")

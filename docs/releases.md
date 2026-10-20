@@ -1,5 +1,11 @@
 # Releases
 
+## 0.2.1 — 20 October 2026
+
+Today and article content expand across the available window width. Added an explicit Shabbat-mode button to Today and kept its toolbar label visible. Stock results have separated rows and prominent Follow buttons; the full watchlist page scrolls when needed. Removed provider/candle-source labels from the stock presentation. Stock refresh is automatic and restarts when the watchlist changes; Hebrew calendar data also refreshes automatically.
+
+Feed creation and editing now use a focused native sheet with editable name and URL fields, validation, Save/Cancel, and immediate backend synchronization. Added a complete Hebrew README translation alongside English, including setup, feature descriptions, synchronization, external providers, single-user deployment, operations, and limitations.
+
 ## 0.2.0 — 20 October 2026
 
 Added a native RSS/Atom reader with up to three configurable feeds, summaries, original-article links, offline article caching, per-feed error states, and backend-synced settings. The backend bounds downloads, validates public destinations and redirects, and rejects XML entity expansion.

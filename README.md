@@ -1,5 +1,9 @@
 # Bee Companion
 
+[English](#english) · [עברית](#hebrew)
+
+<a id="english"></a>
+
 Bee Companion is a **native macOS application for one user**, combining everyday work tools with a readable, on-demand Shabbat display. The interface is SwiftUI and AppKit, not a website or an embedded browser. A local Docker Compose backend stores synchronized work and files; the Mac keeps its own SQLite database so everyday editing continues when Docker or the internet is unavailable.
 
 **This is a single-user application, not a multi-user service.** A deployment has exactly one owner account, no public registration, and no collaboration or shared workspaces. Give another person a separate backend instance and configuration file. The same native app can connect to any compatible instance, one at a time.
@@ -8,25 +12,25 @@ Bee Companion is a **native macOS application for one user**, combining everyday
 
 ### Today and work tools
 
-- **Today:** a dashboard of tasks, upcoming reminders, three world clocks, the Hebrew calendar, zmanim, and followed instruments. Clocks and displayed timestamps omit seconds. The zmanim strip advances independently to the next upcoming time.
+- **Today:** a dashboard of tasks, upcoming reminders, three world clocks, the Hebrew calendar, zmanim, and followed instruments. The dashboard expands across the available window width, including when maximized. Clocks and displayed timestamps omit seconds. The zmanim strip advances independently to the next upcoming time.
 - **Tasks:** title, description, due date or date/time, To do/In progress/Done/Cancelled status, independent archive state, file attachments, linked reminders, TXT/RTF export, and sharing.
 - **Files:** an app-owned folder hierarchy with upload/download, resumable transfers, checksums, immutable file versions, rename/move/duplicate, trash/restore, confirmed permanent deletion, offline copies, Quick Look, default-app opening, and detection of externally edited working copies. Moving a file preserves its attachments.
 - **Notes:** Markdown source and preview or native RTF editing, title/description, autosave, full-text search, import/export, and attachments. Format conversion creates a copy to preserve the original.
 - **Alarms:** complete-description popup windows while the app runs, local macOS notification fallback when closed, snooze, missed-occurrence recovery, and one-time/daily/weekday/weekly/monthly recurrence. Recurrence preserves wall-clock time across daylight-saving changes; monthly dates skip months without that day.
 - **Agenda:** read selected Apple calendars alongside app tasks/reminders, with day/week/month ranges and calendar grids. Calendar access is explicitly granted through macOS, and Apple event data stays on the Mac. Editing external appointments remains in Apple Calendar.
 - **Hebrew calendar:** Hebrew/Gregorian dates, Israel/diaspora selection, holidays, fasts, Rosh Chodesh, Torah portions, Omer, candle lighting/Havdalah, and daily zmanim through Foundation and Hebcal. Location-dependent times require coordinates and a time zone.
-- **Stocks:** London Strategic Edge instrument search, watchlist, latest available minute candle close, change against the previous completed daily bar, timestamps, and editable TradingView symbol mappings. Prices are labeled candle data rather than live ticks.
+- **Stocks:** London Strategic Edge instrument search, watchlist, latest available minute candle close, change against the previous completed daily bar, timestamps, and editable TradingView symbol mappings. Prices are derived from candles.
 - **Sharing:** the native share picker, plain-text WhatsApp compose flow, and LocalSend handoff for files. Destination applications must be installed or available. The user confirms recipients and sending; nothing is sent automatically.
 
 ### RSS reader
 
-Configure **up to three RSS or Atom feeds** in **Settings → RSS & Shabbat mode**. Each has a name and public HTTP/HTTPS feed URL. Save the settings to queue them for backend synchronization. The reader groups articles by feed, displays publication dates and plain-text summaries, and opens original articles in the default browser. It does not crawl full articles or load remote scripts and images.
+Configure **up to three RSS or Atom feeds** in **Settings → RSS & Shabbat mode**. Each has a name and public HTTP/HTTPS feed URL. **Add feed** and **Edit** open a native popup with editable name and URL fields; saving it queues the feed changes for backend synchronization. The reader groups articles by feed, displays publication dates and plain-text summaries, and opens original articles in the default browser. It does not crawl full articles or load remote scripts and images.
 
 The backend downloads and parses feeds, limits download size, checks redirects, rejects private-network destinations, and disables XML entity expansion. Public feeds on standard HTTP/HTTPS ports are supported; authenticated feeds and private LAN feeds are not. Failed feeds retain saved articles and show their unavailable/stale state. Previously loaded articles are also cached on the Mac for offline reading.
 
 ### Shabbat mode
 
-Press **⌘⇧S**, use the **View → Open Shabbat Mode** menu item, or click the moon-and-stars toolbar button. A separate native full-screen window shows all of the following on one page:
+Click the labeled **Shabbat mode** button on Today or in the toolbar, press **⌘⇧S**, or use the **View → Open Shabbat Mode** menu item. A separate native full-screen window shows all of the following on one page:
 
 - Upcoming zmanim, with the next occurrence emphasized.
 - Local weather, temperature, daily high/low, humidity, and wind.
@@ -132,7 +136,7 @@ The generated configuration contains only an instance name, UUID, API URL, and p
 2. In **Settings**, enter the city name, latitude, longitude, and IANA time zone, for example `Asia/Jerusalem`. Coordinates are entered manually and used for weather and Hebcal calculations. Choose Israel or diaspora observances.
 3. Configure up to three comma-separated world-clock IANA zones.
 4. Add instruments from **Stocks**. Verify each TradingView mapping if provider and exchange naming differ.
-5. In **Settings → RSS & Shabbat mode**, add up to three actual RSS/Atom URLs, choose refresh/rotation intervals, and select up to six stocks. Click **Save reader & Shabbat settings**. These settings use the same offline queue and revision-checked sync as the rest of the app.
+5. In **Settings → RSS & Shabbat mode**, click **Add feed** and enter its name and RSS/Atom URL in the popup, then choose **Save feed**. Repeat for up to three feeds. To change an existing feed, use **Edit**. Choose refresh/rotation intervals and up to six stocks, then click **Save reader & Shabbat settings**. These settings use the same offline queue and revision-checked sync as the rest of the app.
 6. Open **RSS Reader** to load articles. Then press **⌘⇧S** to open Shabbat mode. Leave the app and Docker running for unattended updates. Press **Esc** to exit.
 
 ## London Strategic Edge requirement
@@ -218,3 +222,230 @@ The backend uses FastAPI, SQLAlchemy/Alembic, PostgreSQL 17, private filesystem 
 - Automated tests cover persistence/sync, calendar state, recurrence, alarm-window ownership, result identities, RSS parsing/limits/private-address protection, preferences, and safe packaging. Actual Calendar permission prompts, notification delivery, third-party share apps, full-screen readability on your display, and clean-Mac installation still need hands-on validation. Developer ID notarization requires your credentials.
 
 See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-assets.md) for more detail.
+
+---
+
+<a id="hebrew"></a>
+
+# עברית
+
+[חזרה לאנגלית](#english)
+
+Bee Companion היא **אפליקציית macOS מקורית למשתמש יחיד**, המשלבת כלי עבודה יומיומיים עם מסך שבת קריא שניתן להפעיל לפי דרישה. הממשק בנוי ב־SwiftUI וב־AppKit; הוא אינו אתר אינטרנט ואינו דפדפן מוטמע. שרת מקומי המנוהל באמצעות Docker Compose שומר את העבודה והקבצים המסונכרנים. במקביל, ה־Mac מחזיק מסד נתונים מקומי מסוג SQLite, כך שאפשר להמשיך לערוך גם כאשר Docker או חיבור האינטרנט אינם זמינים.
+
+**האפליקציה מיועדת למשתמש יחיד בלבד, ולא לשירות מרובה משתמשים.** בכל פריסה יש חשבון בעלים אחד בלבד, ללא הרשמה ציבורית, שיתוף פעולה בין משתמשים או סביבות עבודה משותפות. עבור אדם נוסף יש ליצור מופע שרת נפרד וקובץ תצורה נפרד. אותה אפליקציה מקורית יכולה להתחבר למופעים תואמים שונים, אחד בכל פעם.
+
+## תכונות
+
+### מסך היום וכלי עבודה
+
+- **Today — היום:** לוח בקרה עם משימות, תזכורות קרובות, עד שלושה שעונים עולמיים, לוח שנה עברי, זמני היום וניירות ערך במעקב. לוח הבקרה מתפרס על רוחב החלון הזמין, גם כשהחלון מוגדל. השעונים וחותמות הזמן המוצגות אינם כוללים שניות. פס זמני היום נגלל בנפרד אל הזמן הבא שעתיד להתרחש.
+- **Tasks — משימות:** כותרת, תיאור, תאריך יעד או תאריך ושעה, מצבים To do / In progress / Done / Cancelled, ארכוב נפרד ממצב הביצוע, קבצים מצורפים, תזכורות מקושרות, ייצוא TXT/RTF ושיתוף.
+- **Files — קבצים:** עץ תיקיות בבעלות האפליקציה, העלאה והורדה, חידוש העברות שנקטעו, בדיקת תקינות באמצעות סכומי ביקורת, גרסאות קבצים שאינן נדרסות, שינוי שם, העברה ושכפול, סל מחזור ושחזור, מחיקה סופית לאחר אישור, עותקים מקומיים, Quick Look, פתיחה ביישום ברירת המחדל וזיהוי שינויים בעותקי עבודה שנערכו ביישום חיצוני. העברת קובץ אינה שוברת את הקישורים אליו מתוך משימות או הערות.
+- **Notes — הערות:** עריכת מקור ותצוגה מקדימה של Markdown, או עריכת RTF מקורית; כותרת ותיאור, שמירה אוטומטית, חיפוש בטקסט המלא, ייבוא וייצוא וקבצים מצורפים. המרה בין פורמטים יוצרת עותק כדי לשמור על המקור.
+- **Alarms — התראות ותזכורות:** חלון המציג את התיאור המלא כשהאפליקציה פועלת, התראות macOS מקומיות כשהיא סגורה, נודניק, שחזור תזכורות שהוחמצו וחזרה חד־פעמית, יומית, בימי שבוע נבחרים, שבועית או חודשית. תזכורות חוזרות שומרות על השעה המקומית במעבר לשעון קיץ או חורף; חזרה חודשית מדלגת על חודשים שבהם התאריך שנבחר אינו קיים.
+- **Agenda — סדר יום:** הצגת לוחות Apple שנבחרו לצד המשימות והתזכורות של האפליקציה, בטווחי יום, שבוע וחודש ובתצוגת רשת לוח שנה. הגישה ללוחות ניתנת במפורש דרך macOS, ואירועי Apple נשארים על ה־Mac. עריכת אירועים חיצוניים מתבצעת באפליקציית Calendar.
+- **לוח שנה עברי:** תאריכים עבריים ולועזיים, בחירת מנהגי ישראל או חו״ל, חגים, צומות, ראש חודש, פרשות השבוע, ספירת העומר, הדלקת נרות והבדלה וזמני היום באמצעות Foundation ו־Hebcal. זמנים התלויים במיקום מחייבים קואורדינטות ואזור זמן.
+- **Stocks — ניירות ערך:** חיפוש מכשירים פיננסיים באמצעות London Strategic Edge, רשימת מעקב, מחיר הסגירה האחרון הזמין של נר בן דקה, שינוי ביחס לנר היומי הקודם שהושלם, חותמות זמן ומיפוי ניתן לעריכה לסימול TradingView. המחירים נגזרים מנתוני נרות.
+- **שיתוף:** חלונית השיתוף המקורית של macOS, פתיחת הודעת WhatsApp עם טקסט פשוט והעברת קבצים ל־LocalSend. יישומי היעד חייבים להיות מותקנים או זמינים. המשתמש מאשר את הנמענים ואת השליחה; דבר אינו נשלח אוטומטית.
+
+### קורא RSS
+
+אפשר להגדיר **עד שלוש הזנות RSS או Atom** תחת **Settings → RSS & Shabbat mode**. לכל הזנה יש שם וכתובת HTTP/HTTPS ציבורית. הכפתורים **Add feed** ו־**Edit** פותחים חלונית מקורית שבה ניתן לערוך את השם ואת הכתובת. שמירת החלונית מוסיפה את השינויים לתור הסנכרון עם השרת. הקורא מקבץ כתבות לפי הזנה, מציג תאריכי פרסום ותקצירים כטקסט פשוט ופותח כתבות מקור בדפדפן ברירת המחדל. הוא אינו סורק את הכתבה המלאה ואינו טוען סקריפטים או תמונות מרוחקות.
+
+השרת מוריד ומפענח את ההזנות, מגביל את גודל ההורדה, בודק הפניות, חוסם יעדים ברשתות פרטיות ומונע הרחבת ישויות XML. נתמכות הזנות ציבוריות בפורטים הרגילים של HTTP/HTTPS; הזנות המחייבות הזדהות והזנות ברשת מקומית פרטית אינן נתמכות. כאשר הזנה אינה זמינה, כתבות שכבר נשמרו נשארות מוצגות עם סימון מתאים. כתבות שנטענו נשמרות גם ב־Mac לקריאה ללא חיבור.
+
+### מצב שבת
+
+לחצו על הכפתור המסומן **Shabbat mode** במסך Today או בסרגל הכלים, הקישו **⌘⇧S**, או השתמשו בתפריט **View → Open Shabbat Mode**. ייפתח חלון מקורי נפרד במסך מלא, המציג באותו עמוד:
+
+- זמני היום הקרובים, תוך הדגשת הזמן הבא.
+- מזג אוויר מקומי, טמפרטורה, טמפרטורות יומיות מרבית ומזערית, לחות ורוח.
+- עד שישה ניירות ערך נבחרים מרשימת המעקב.
+- עד שלוש עמודות RSS שכותרותיהן ותקציריהן מתחלפים אוטומטית.
+
+התצוגה משתמשת בטקסט גדול, ברקע כהה עם ניגודיות גבוהה וללא הצגת שניות. המסך נשאר פעיל כל עוד החלון פתוח. לאחר ההפעלה, התוכן מתעדכן ללא שימוש בעכבר. **Esc** סוגר את חלון השבת ומשחרר את מניעת כיבוי המסך. ההפעלה היא לפי דרישה; אין הפעלה אוטומטית ביום שישי או כיבוי מתוזמן.
+
+בהגדרות ניתן לבחור רענון כל דקה עד שעה, החלפת כותרות כל 10 עד 120 שניות ואת ניירות הערך שיוצגו. בחירות אלה, כתובות ההזנות והעדפות המיקום מסתנכרנות עם השרת. מזג האוויר וזמני היום משתמשים בקואורדינטות העיר ובאזור הזמן שהוגדרו, ולא במעקב מיקום רציף. למטמוני ההזנות, מזג האוויר והשוק יש זמני תוקף נפרדים, ולכן בדיקת רענון אינה בהכרח בקשה חדשה לספק בכל פעם. מטמון ההזנות נשמר עד חמש דקות, מטמון מזג האוויר עשר דקות ומטמון נתוני השוק דקה.
+
+## תחילת עבודה
+
+### 1. התקנת דרישות מוקדמות
+
+נדרשים:
+
+- macOS 14 ומעלה, על Apple Silicon או Intel.
+- Xcode 15 ומעלה וכלי שורת הפקודה לצורך בניית האפליקציה המקורית. יש להפעיל את Xcode פעם אחת כדי להשלים התקנת רכיבים ואישור הרישיון.
+- Docker Desktop עם Docker Compose v2, כשהוא פועל לפני הקמת השרת.
+- Python 3.11 ומעלה עבור כלי הניהול.
+- Git וחיבור אינטרנט להורדת תלויות ונתונים חיצוניים.
+- מפתח API של London Strategic Edge אם רוצים חיפוש ומחירי מניות. ניתן להקים את יתר התכונות גם בלעדיו.
+
+בדיקת הכלים:
+
+```sh
+xcodebuild -version
+swift --version
+python3 --version
+docker compose version
+```
+
+שכפול קוד המקור:
+
+```sh
+git clone https://github.com/bee-raph/bee-companion.git
+cd bee-companion
+```
+
+### 2. אתחול השרת הפרטי
+
+הריצו:
+
+```sh
+scripts/companionctl init --name "My Bee Companion" --login owner --port 8787
+```
+
+האתחול יוצר תיקיית `.runtime/` עם הרשאות מוגבלות, מגריל סיסמה למסד הנתונים ומזהה UUID למופע, ומבקש באופן מאובטח את מפתח London Strategic Edge ואת סיסמת הבעלים. בחרו סיסמה בת 12 תווים לפחות ושמרו אותה במנהל הסיסמאות. אפשר להשאיר את מפתח הספק ריק בשלב הראשון; ממשקי המניות יציגו הודעה שהוא חסר. המפתחות והסיסמאות אינם מופיעים בארגומנטים של פקודות או בקובץ התצורה של הלקוח.
+
+הפקודה בונה את תמונת השרת, מפעילה PostgreSQL, מחילה מיגרציות, יוצרת את חשבון הבעלים היחיד ומפעילה את ה־API ואת תהליך הרקע. ניתן להריץ אותה שוב עבור אותו מופע: הנתונים ופרטי הבעלים הקיימים נשמרים. ה־API מאזין בכתובת `http://127.0.0.1:8787`; PostgreSQL אינו נחשף בפורט של המחשב המארח. אין צורך ב־Supabase, במסד נתונים בענן, בשרת דואר או בממשק דפדפן.
+
+בדיקת תקינות:
+
+```sh
+scripts/companionctl status
+scripts/companionctl validate
+```
+
+הפקודה האחרונה אמורה להחזיר `{"status":"ready"}`. השאירו את Docker Desktop פועל כאשר נדרש סנכרון או מידע חיצוני עדכני. סגירת Docker אינה מוחקת את העבודה ואינה מונעת עריכת משימות והערות מקומית.
+
+### 3. בנייה ופתיחה של האפליקציה המקורית
+
+לשימוש מקומי:
+
+```sh
+scripts/build-macos debug
+open "macos/dist/Bee Companion.app"
+```
+
+הסקריפט מוריד את תלויות Swift, בונה חבילת `.app` אמיתית, מעתיק את האייקון והמשאבים וחותם עליה מקומית. כל גרסה חדשה נבנית בתיקיית ביניים נפרדת ומתפרסמת באמצעות שינוי שמות תיקיות; קובץ הרצה של אפליקציה פעילה אינו נדרס. גרסאות קודמות נשמרות תחת `macos/dist/.previous-builds/`. יש לצאת מהאפליקציה ולפתוח אותה מחדש כדי להשתמש בגרסה מעודכנת.
+
+לבניית אפליקציה אוניברסלית עבור Intel ו־Apple Silicon וקובץ DMG:
+
+```sh
+scripts/build-macos release
+```
+
+חתימה מקומית מתאימה לבנייה עצמית. הפצה שעברה notarization דורשת Developer ID של Apple ופרופיל notarytool מוגדר ב־Keychain:
+
+```sh
+SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARY_PROFILE="your-notarytool-profile" \
+scripts/build-macos release
+```
+
+הסקריפט מדלג במפורש על notarization כאשר פרטים אלה אינם זמינים. יש לשמור זהויות חתימה, אישורים ופרטי notary מחוץ למאגר.
+
+### 4. חיבור האפליקציה למופע שלכם
+
+פתחו **Settings → Import instance configuration** ובחרו:
+
+```text
+<your checkout>/.runtime/client.companion-instance.json
+```
+
+מכיוון ש־`.runtime` היא תיקייה מוסתרת, הקישו **⌘⇧G** בחלונית בחירת הקובץ והדביקו את הנתיב המלא. התחברו עם שם המשתמש והסיסמה שבחרתם באתחול. האפליקציה בודקת את UUID המופע ואת גרסת ה־API, שומרת אסימוני התחברות ב־Keychain של macOS, ולאחר הסנכרון אמורה להציג **Everything is up to date**.
+
+קובץ התצורה שנוצר מכיל רק שם מופע, UUID, כתובת API וגרסת פרוטוקול. הוא אינו מכיל סיסמה, מפתח מניות או הרשאת ניהול. אין להעתיק את תיקיית זמן הריצה של משתמש אחר. בפריסה חדשה **לא** נוצר קובץ `initial-login.txt`: השתמשו בסיסמה שהקלדתם, או אפסו אותה מקומית לפי ההוראות בהמשך.
+
+### 5. הגדרת לוחות שנה, מיקום, הזנות ומצב שבת
+
+1. במסך **Agenda**, לחצו על **Enable Apple Calendar** והעניקו גישה מלאה ללוחות. אם הגישה נדחתה, הפעילו את Bee Companion תחת **System Settings → Privacy & Security → Calendars**, חזרו לאפליקציה ורעננו. תפריט הלוחות מציג סימוני בחירה, בחירה וביטול של כל הלוחות והסברים כאשר אין לוחות זמינים.
+2. במסך **Settings**, הזינו שם עיר, קו רוחב, קו אורך ואזור זמן בפורמט IANA, לדוגמה `Asia/Jerusalem`. הקואורדינטות מוזנות ידנית ומשמשות לחישובי מזג האוויר ו־Hebcal. בחרו מנהגי ישראל או חו״ל.
+3. הגדירו עד שלושה אזורי זמן של IANA, מופרדים בפסיקים, עבור השעונים העולמיים.
+4. הוסיפו מכשירים פיננסיים במסך **Stocks**. בדקו את המיפוי ל־TradingView כאשר שמות הספק והבורסה שונים.
+5. תחת **Settings → RSS & Shabbat mode**, לחצו **Add feed**, הזינו בחלונית שם וכתובת RSS/Atom ובחרו **Save feed**. חזרו על הפעולה לעד שלוש הזנות. לשינוי הזנה קיימת השתמשו ב־**Edit**. בחרו מרווחי רענון והחלפת כותרות ועד שש מניות, ואז לחצו **Save reader & Shabbat settings**. ההגדרות משתמשות באותו תור עבודה לא מקוון ובאותו סנכרון מבוסס גרסאות של שאר האפליקציה.
+6. פתחו את **RSS Reader** כדי לטעון כתבות. לאחר מכן לחצו **⌘⇧S** או על **Shabbat mode** כדי לפתוח את מצב השבת. השאירו את האפליקציה ואת Docker פועלים לעדכונים ללא התערבות. הקישו **Esc** כדי לצאת.
+
+## דרישת London Strategic Edge
+
+יש להנפיק מפתח אישי דרך [London Strategic Edge](https://londonstrategicedge.com/data). השרת משתמש ב־[SDK הרשמי ל־Python](https://github.com/londonstrategicedge/lse-data), שגרסתו מקובעת ב־`backend/requirements.txt`. המפתח נשמר רק בתיקיית הפריסה הפרטית ומועבר לקונטיינרים כסוד של Compose. הוא אינו נכלל באפליקציה המקורית, אינו מועבר על ידי הלקוח בתוך כתובת ציבורית ואינו נכלל במאגר הזה.
+
+במופע קיים ניתן לערוך מקומית את `.runtime/lse_api_key` ולהפעיל מחדש את השרת. יש לשמור על הרשאות מוגבלות לקובץ. אין להדביק את המפתח בקוד, בדוגמאות README, בדיווחי תקלות או ב־commits.
+
+החיפוש משתמש בקטלוג הספק; המחירים מבוססים על נרות של דקה ועל נתונים יומיים קודמים, עם מטמון ותקציב בקשות בשרת. זמינות, כיסוי שווקים, השהיה, מכסות ושימוש מותר תלויים בחשבון הספק ובתנאים העדכניים שלו. סימולים מסוימים מופיעים בכמה מערכי נתונים, ולכן זהות תוצאת חיפוש מורכבת ממערך הנתונים ומהסימול. מתאם המחירים בגרסה זו משתמש בממשק הנרות הרגיל ואינו מממש תמחור שרשראות אופציות. עבור רשימת המעקב השתמשו ברישומי מניות וקרנות סל.
+
+אין חיבור לברוקר או ביצוע פקודות מסחר. כל משתמש עצמאי זקוק למפתח משלו ועליו לפעול לפי [תנאי הנתונים של הספק](https://londonstrategicedge.com/terms). אין להפעיל את הפריסה כשירות להפצה מחדש של נתוני שוק.
+
+נתוני מזג האוויר מגיעים מ־[Open-Meteo](https://open-meteo.com/), עם ייחוס על המסך. יש לבדוק את תנאי השירות בהתאם לשימוש המתוכנן, במיוחד בפריסה מסחרית. נתוני הלוח העברי מגיעים מ־[Hebcal](https://www.hebcal.com/home/developer-apis). שתי האינטגרציות אינן דורשות מפתח עבור נקודות הקצה הציבוריות המוגדרות. מפרסמי RSS קובעים את זמינות ההזנות ואת תנאי השימוש בתוכן שלהם.
+
+## כיצד הסנכרון עובד
+
+מסד GRDB/SQLite שעל ה־Mac הוא מקור הנתונים המיידי של הממשק. שמירת פריט מבצעת באותה טרנזקציה גם שמירה מקומית וגם הוספת שינוי יוצא לתור. שינויים שטרם נשלחו מאוחדים; פעולות שכבר נשלחו שומרות על מזהים יציבים, כך שניסיון חוזר אינו יוצר כפילויות.
+
+הלקוח דוחף שינויים עם מספרי גרסה ומושך סמן שינויים עמיד מהשרת בהפעלה, בחיבור מחדש, בסנכרון ידני ובאופן מחזורי כשהוא פעיל. ה־API בודק גרסה צפויה, שומר קבלות לפעולות חוזרות ומסדר את הקצאת יומן השינויים בעזרת נעילת advisory של PostgreSQL. דפי שינויים והסמנים שלהם נשמרים אטומית בלקוח. אם לקוח אחר שינה רשומה, האפליקציה שומרת את הטיוטה המקומית ואת גרסת השרת לפתרון מפורש בהגדרות; היא אינה משליכה בשקט עריכות של הערות או קבצים. סימוני מחיקה והיסטוריה נשמרים, ולכן לסמנים אין כרגע תאריך תפוגה.
+
+משימות, הערות, תיקיות, מידע על קבצים, קישורי קבצים מצורפים, תזכורות, פעולות על מופעי תזכורות, רשימת המעקב והעדפות משתמש מסתנכרנים. תצורת RSS, רענון והחלפת כותרות במצב שבת, מניות נבחרות, קואורדינטות העיר והעדפות הלוח העברי הם חלק מההעדפות המסונכרנות. אירועי Apple, החלטות הרשאה, מבנה החלונות ומטמונים מקומיים נשארים על המכשיר.
+
+בהעלאת קבצים נשמרים מזהה ההעברה והמיקום שאושר גם בלקוח וגם בשרת. התוכן נבדק באמצעות סכום ביקורת לפני שהוא הופך לגרסה שאינה נדרסת. גם הורדות נבדקות. קובץ עבודה ששונה ביישום אחר יכול להיטען כגרסה חדשה. נתיבי הקבצים הפיזיים בשרת מבוססים על מזהים שנוצרו, ולא על שמות התיקיות הנראים בממשק.
+
+## ניהול, גיבוי ושחזור
+
+```sh
+scripts/companionctl start
+scripts/companionctl stop
+scripts/companionctl status
+scripts/companionctl validate
+scripts/companionctl backup
+scripts/companionctl backup --export-to /Volumes/YourDisk/BeeCompanionBackups
+scripts/companionctl upgrade
+scripts/companionctl reset-password
+scripts/companionctl restore --archive /absolute/path/backup.tar.gz
+```
+
+איפוס סיסמה הוא פעולת ניהול מקומית שמבטלת הפעלות התחברות קיימות. אין שירות שחזור באמצעות דוא״ל.
+
+Volumes נפרדים של Docker מכילים את מסד PostgreSQL, הקבצים שאינם נדרסים והגיבויים. הפקודה `stop` שומרת את הנתונים. **אין להשתמש ב־`docker compose down -v` על מופע שברצונכם לשמור.** הגדרות האחסון של Docker Desktop קובעות באיזה דיסק מארח נשמרים ה־volumes; תיקיית המופע קובעת היכן נשמרים התצורה והסודות.
+
+גיבויים כוללים dump של PostgreSQL, אובייקטים מקושרים, מניפסט מופע וגרסה וסכומי ביקורת. תהליך הרקע מתזמן גיבוי יומי כשהוא פועל ושומר שבעה גיבויים אחרונים וארבעה שבועיים. גיבוי מקומי נשאר באותו מחשב עד שהוא מיוצא לדיסק אחר. ייצוא מחייב שקונטיינר ה־API יפעל. יש להגן על קובצי הגיבוי: הם מכילים עבודה פרטית וגיבובי סיסמאות של חשבון הבעלים.
+
+שדרוג יוצר גיבוי, עוצר כתיבות של ה־API ותהליך הרקע, בונה ומחיל מיגרציות ואז בודק מוכנות. אם מיגרציה נכשלת, הכתיבות נשארות מושבתות לצורך התאוששות. גם שחזור עוצר כתיבות, מאמת אובייקטים, משחזר את מסד הנתונים והקבצים ומבטל הפעלות התחברות. שחזור לפריסה אחרת משתמש בזהות המופע של פריסת היעד ובחשבון הבעלים ונתוני העבודה ששוחזרו. תהליך גיבוי ושחזור נבדק מול פריסה שנייה מבודדת.
+
+### משתמש או מופע נוספים
+
+```sh
+scripts/companionctl --instance-dir .runtime-second init \
+  --name "Second Companion" --login owner --port 8788
+```
+
+לכל מופע יש פרויקט Compose, מסד נתונים, קבצים, גיבויים, סודות, UUID וחשבון בעלים יחיד משלו. בפעולות ניהול נוספות יש להעביר `--instance-dir` **לפני** שם הפקודה. ייבאו באפליקציה המקורית את קובץ התצורה שנוצר עבור אותו מופע. לפני החלפת מופע יש לסנכרן עבודה ממתינה ולפתור התנגשויות. מסדי הנתונים המקומיים, מטמוני הקבצים וההפעלות ב־Keychain מופרדים לפי UUID של המופע.
+
+## פיתוח ובדיקות
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt pytest
+PYTHONPATH=backend .venv/bin/pytest backend/tests scripts/tests -q
+swift test --package-path macos
+```
+
+סכמת ה־API נשמרת במאגר בקובץ `backend/openapi.json`. לאחר שינוי ב־API:
+
+```sh
+FILES_ROOT=/tmp/bee-companion-api PYTHONPATH=backend \
+  .venv/bin/python scripts/export-openapi.py
+```
+
+תהליך CI מריץ בדיקות שרת ואריזה, בודק שהסכמה מעודכנת ומריץ בדיקות של האפליקציה המקורית. תיעוד API זמין בכתובת `http://127.0.0.1:8787/docs`; נקודות קצה פרטיות מחייבות הזדהות.
+
+השרת מבוסס על FastAPI, SQLAlchemy/Alembic, PostgreSQL 17, אחסון קבצים פרטי ותהליך רקע המשתמש ב־PostgreSQL. ישויות העבודה עם הגרסאות משתמשות במעטפת `records` משותפת, סוגים מאומתים ותוכן בעל ערכי מחרוזת. להפעלות התחברות, גרסאות קבצים, העלאות, משימות רקע, מטמון ספקים, קבלות פעולות ויומן שינויים יש טבלאות ייעודיות. הערות עשירות שומרות RTF בקידוד base64 וטקסט שחולץ במעטפת ההערה. האפליקציה המקורית משתמשת ב־SwiftUI/AppKit, GRDB/FTS5, EventKit, UserNotifications, Keychain ו־URLSession.
+
+## אבטחה ומגבלות מעשיות
+
+- חשבון בעלים יחיד, גיבוב סיסמאות Argon2id, אסימונים אטומים שנשמרים כגיבוב בשרת, ריענון פרטי התחברות מתחלפים, שמירת הפעלות ב־Keychain והגבלת ניסיונות התחברות. אין נקודת קצה להרשמה.
+- ה־API מאזין רק בכתובת loopback של IPv4; PostgreSQL אינו נחשף. הלקוח המקורי מקבל HTTP רק עבור כתובות loopback. אירוח מרוחק אינו כלול בפריסה זו ויחייב HTTPS ותכנון אבטחה ופריסה מתאים.
+- `.runtime*`, קובצי סביבה, מסדי נתונים מקומיים, מטמונים, מפתחות ואישורי חתימה, אפליקציות ומתקינים שנוצרו ותיקיות סודות מוחרגים מ־Git. אין להוסיף אותם בכוח. אפשר לבדוק קבצים הממתינים ל־commit באמצעות `python3 scripts/check_secrets.py --staged`.
+- האפליקציה אינה שירות התראות שפועל תמיד ברקע. סגירת החלון הראשי האחרון מסיימת אותה. macOS שולט בהתראות כשהאפליקציה סגורה; מחשב במצב שינה או כבוי אינו יכול להבטיח חלון תזכורת בזמן המדויק. בכל פתיחה הלקוח מתזמן את 60 המופעים הקרובים ביותר בטווח של 30 ימים.
+- קבצים שנשמרו במטמון אינם מפונים אוטומטית. סימון לשימוש לא מקוון שומר את ההעדפה ומוריד את התוכן; ניהול מגבלת גודל המטמון עדיין אינו ממומש.
+- הבדיקות האוטומטיות מכסות שמירה וסנכרון, מצבי לוח שנה, תזכורות חוזרות, בעלות חלונות התראה, זהויות תוצאות חיפוש, פענוח RSS ומגבלותיו, הגנה מפני כתובות פרטיות, העדפות ואריזה בטוחה. חלוניות ההרשאה האמיתיות של Calendar, מסירת התראות בפועל, יישומי שיתוף חיצוניים, קריאות המסך המלא על הצג שלכם והתקנה על Mac נקי עדיין דורשים בדיקה ידנית. notarization של Apple מחייבת את פרטי החתימה שלכם.
+
+למידע נוסף: [הערות גרסה](docs/releases.md) ו־[קובצי האייקון והזהות החזותית](docs/brand-assets.md).

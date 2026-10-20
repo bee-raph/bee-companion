@@ -246,7 +246,14 @@ struct HebrewCalendarView: View {
           Text(BeeDisplayTime.timestamp(event.date)).font(.caption)
         }
       }
-    }.padding().task { await load() }
+    }.padding().task {
+      while !Task.isCancelled {
+        await load()
+        try? await Task.sleep(
+          for: .seconds(ReaderPreferences.refreshSeconds(model.preferences.body)))
+        if Task.isCancelled { break }
+      }
+    }
   }
   func load() async {
     let key = "hebrew." + (model.configuration?.instanceID ?? "local")
@@ -296,6 +303,7 @@ struct HebrewCalendarView: View {
 }
 struct TodayView: View {
   @EnvironmentObject var model: AppModel
+  @EnvironmentObject var shabbat: ShabbatController
   var tasks: [Item] { model.items.filter { !$0.deleted && !$0.archived && $0.kind == "tasks" } }
   var upcoming: [Item] {
     model.items.filter {
@@ -321,6 +329,11 @@ struct TodayView: View {
               .foregroundStyle(.secondary)
           }
           Spacer()
+          Button {
+            shabbat.show(model)
+          } label: {
+            Label("Shabbat mode", systemImage: "moon.stars")
+          }.buttonStyle(.bordered).controlSize(.large)
           Button {
             _ = model.add("tasks")
           } label: {
@@ -385,7 +398,7 @@ struct TodayView: View {
             maxWidth: .infinity)
         }
         BeeCard(padding: 8) { StocksView(compact: true).frame(minHeight: 130) }
-      }.padding(30).frame(maxWidth: 1320).frame(maxWidth: .infinity)
+      }.padding(30).frame(maxWidth: .infinity, alignment: .leading)
     }.background(BeeTheme.canvas)
   }
 }
