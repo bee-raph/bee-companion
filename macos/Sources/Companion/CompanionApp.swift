@@ -249,14 +249,12 @@ struct ItemListView: View {
         }
         List(rows, selection: $selected) { item in
           HStack(alignment: .top, spacing: 11) {
-            Image(
-              systemName: item.kind == "tasks"
-                ? (item.body["status"] == "Done" ? "checkmark.circle.fill" : "circle")
-                : item.kind == "notes" ? "doc.text" : "alarm"
-            )
-            .font(.system(size: 17, weight: .light)).foregroundStyle(
-              item.body["status"] == "Done" ? BeeTheme.mint : BeeTheme.accent
-            ).padding(.top, 1)
+            if item.kind == "tasks" {
+              TaskCompletionButton(item: item)
+            } else {
+              Image(systemName: item.kind == "notes" ? "doc.text" : "alarm")
+                .font(.system(size: 17)).foregroundStyle(BeeTheme.accent).padding(.top, 3)
+            }
             VStack(alignment: .leading, spacing: 5) {
               Text(item.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
               if let description = item.body["description"], !description.isEmpty {
@@ -310,7 +308,6 @@ struct ItemEditor: View {
   @EnvironmentObject var alarms: AlarmService
   @State var item: Item
   @State var dateEnabled = false
-  @State var attachment = ""
   @StateObject private var noteEditing = NoteEditing()
   func text(_ key: String, default value: String = "") -> Binding<String> {
     Binding(get: { item.body[key] ?? value }, set: { item.body[key] = $0 })
@@ -421,6 +418,9 @@ struct ItemEditor: View {
         item.body.removeValue(forKey: "date")
       }
     }
+    .onChange(of: model.items.first(where: { $0.id == item.id })?.body["status"]) { _, status in
+      if item.kind == "tasks", let status { item.body["status"] = status }
+    }
     .onChange(of: item) { _, new in
       if model.items.first(where: { $0.id == new.id }) != new { model.save(new) }
     }
@@ -461,16 +461,9 @@ struct ItemEditor: View {
         }
       }
       HStack {
-        Picker(L10n.text("File"), selection: $attachment) {
-          Text(L10n.text("Choose file")).tag("")
-          ForEach(model.items.filter { $0.kind == "files" && !$0.deleted }) {
-            Text($0.title).tag($0.id)
-          }
+        Button(L10n.text("Attach files…"), systemImage: "paperclip") {
+          model.attachFiles(to: item)
         }
-        Button(L10n.text("Attach")) {
-          model.save(Item(kind: attachmentKind, body: ["ownerID": item.id, "fileID": attachment]))
-          attachment = ""
-        }.disabled(attachment.isEmpty)
         Button(L10n.text("Add reminder")) {
           model.save(
             Item(

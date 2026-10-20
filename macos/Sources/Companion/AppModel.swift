@@ -180,6 +180,20 @@ import SwiftUI
     guard panel.runModal() == .OK else { return }
     for url in panel.urls { startImport(url, parent: parent) }
   }
+  func attachFiles(to owner: Item) {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = true
+    guard panel.runModal() == .OK else { return }
+    for url in panel.urls {
+      let file = Item(kind: "files", body: ["title": url.lastPathComponent, "parent": ""])
+      transfers[file.id] = Task {
+        await uploadFile(url, existing: file, attachmentOwner: owner)
+        transfers.removeValue(forKey: file.id)
+      }
+    }
+  }
   func startImport(_ url: URL, parent: String = "") {
     let item = Item(kind: "files", body: ["title": url.lastPathComponent, "parent": parent])
     transfers[item.id] = Task {
@@ -195,25 +209,26 @@ import SwiftUI
       transfers.removeValue(forKey: item.id)
     }
   }
-  func uploadFile(_ url: URL, parent: String = "", existing: Item? = nil) async {
+  func uploadFile(
+    _ url: URL, parent: String = "", existing: Item? = nil, attachmentOwner: Item? = nil
+  ) async {
     do {
       let access = url.startAccessingSecurityScopedResource()
       defer { if access { url.stopAccessingSecurityScopedResource() } }
       var item =
         existing ?? Item(kind: "files", body: ["title": url.lastPathComponent, "parent": parent])
       let target = cache.appendingPathComponent(item.id)
-      if url != target {
-        if FileManager.default.fileExists(atPath: target.path) {
-          try FileManager.default.removeItem(at: target)
-        }
-        try FileManager.default.copyItem(at: url, to: target)
-      }
-      let data = try Data(contentsOf: target, options: .mappedIfSafe)
-      item.body["checksum"] = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+      let prepared = try await Task.detached(priority: .userInitiated) {
+        try ImportedFile.prepare(url, target: target)
+      }.value
+      item.body["checksum"] = prepared.checksum
       item.body["modified"] = ISO8601DateFormatter().string(from: Date())
-      item.body["size"] = String(data.count)
+      item.body["size"] = String(prepared.size)
       item.body["uploadPending"] = "true"
       save(item)
+      if let owner = attachmentOwner {
+        save(AttachmentFile.link(owner: owner, fileID: item.id))
+      }
       try await sendFile(item)
       reload()
     } catch is CancellationError {} catch { self.error = error.localizedDescription }

@@ -98,7 +98,7 @@ struct AgendaView: View {
   @EnvironmentObject var model: AppModel
   @StateObject var agenda = AgendaService()
   @State var date = Date()
-  @State var range = "Week"
+  @State var range = "Day"
   var days: Int {
     range == "Day"
       ? 1 : range == "Week" ? 7 : Calendar.current.range(of: .day, in: .month, for: date)!.count
@@ -110,13 +110,111 @@ struct AgendaView: View {
         ? Calendar.current.dateInterval(of: .weekOfYear, for: date)!.start
         : Calendar.current.startOfDay(for: date)
   }
+  var entries: [AgendaEntry] {
+    let apple = agenda.events.map { event in
+      AgendaEntry(
+        id: "apple:" + (event.eventIdentifier ?? UUID().uuidString) + ":"
+          + String(event.startDate.timeIntervalSince1970), title: event.title ?? L10n.text("Event"),
+        start: event.startDate, end: event.endDate, allDay: event.isAllDay,
+        color: Color(nsColor: event.calendar.color), source: event.calendar.title, item: nil)
+    }
+    let work = model.items.filter {
+      ["tasks", "reminders"].contains($0.kind) && !$0.deleted && !$0.archived && $0.date != nil
+        && $0.body["status"] != "Cancelled"
+    }.map { item in
+      AgendaEntry(
+        id: item.id, title: item.title, start: item.date!, end: item.date!.addingTimeInterval(1800),
+        allDay: item.body["dateOnly"] == "true",
+        color: item.kind == "tasks" ? BeeTheme.mint : BeeTheme.amber,
+        source: L10n.text(item.kind == "tasks" ? "Tasks" : "Alarms"), item: item)
+    }
+    return apple + work
+  }
+  var visibleDays: [Date] {
+    range == "Week"
+      ? (0..<7).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: start) }
+      : [Calendar.current.startOfDay(for: date)]
+  }
+  func step(_ direction: Int) {
+    date =
+      Calendar.current.date(
+        byAdding: range == "Month" ? .month : .day, value: direction * (range == "Week" ? 7 : 1),
+        to: date) ?? date
+  }
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      HStack {
-        DatePicker(L10n.text("Date"), selection: $date, displayedComponents: .date)
+    VStack(spacing: 0) {
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text(date.formatted(.dateTime.month(.wide).year().locale(model.language.locale))).font(
+            .title2.weight(.semibold))
+          Text(TimeZone.current.identifier.replacingOccurrences(of: "_", with: " ")).font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        Spacer()
+        Button(L10n.text("Today")) { date = Date() }
+        Button {
+          step(-1)
+        } label: {
+          Image(systemName: "chevron.left")
+        }.help(L10n.text("Previous"))
+        Button {
+          step(1)
+        } label: {
+          Image(systemName: "chevron.right")
+        }.help(L10n.text("Next"))
+        DatePicker(L10n.text("Date"), selection: $date, displayedComponents: .date).labelsHidden()
+          .fixedSize()
         Picker(L10n.text("Range"), selection: $range) {
           ForEach(["Day", "Week", "Month"], id: \.self) { Text(L10n.text($0)).tag($0) }
-        }.pickerStyle(.segmented)
+        }.pickerStyle(.segmented).frame(width: 210)
+      }.padding(18)
+      Divider()
+      HStack {
+        Menu {
+          if agenda.calendars.isEmpty {
+            if agenda.access == .fullAccess {
+              Text(L10n.text("No calendars found")).disabled(true)
+              Button(L10n.text("Open Calendar")) {
+                NSWorkspace.shared.open(URL(string: "ical://")!)
+              }
+            } else if agenda.access == .denied || agenda.access == .restricted {
+              Text(L10n.text("Calendar access is unavailable")).disabled(true)
+              Button(L10n.text("Open System Settings")) {
+                NSWorkspace.shared.open(
+                  URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+              }
+            } else {
+              Text(L10n.text("Calendar access is required")).disabled(true)
+              Button(L10n.text("Enable Apple Calendar")) {
+                Task { await agenda.enable(date: start, days: days) }
+              }.disabled(agenda.requesting)
+            }
+          } else {
+            ForEach(agenda.calendars, id: \.calendarIdentifier) { calendar in
+              Toggle(
+                isOn: Binding(
+                  get: { agenda.selectedIDs.contains(calendar.calendarIdentifier) },
+                  set: { agenda.select(calendar, enabled: $0, date: start, days: days) })
+              ) {
+                Text(calendar.title + " · " + calendar.source.title)
+              }
+            }
+            Divider()
+            Button(L10n.text("Select all")) { agenda.selectAll(true, date: start, days: days) }
+            Button(L10n.text("Deselect all")) { agenda.selectAll(false, date: start, days: days) }
+          }
+          Divider()
+          Button(L10n.text("Refresh calendars")) { agenda.refresh(start, days: days) }
+        } label: {
+          Label(
+            agenda.calendars.isEmpty
+              ? L10n.text("Choose calendars")
+              : L10n.format(
+                "Calendars (%d of %d)", agenda.selectedIDs.count, agenda.calendars.count),
+            systemImage: "calendar.badge.checkmark")
+        }
+
+        Spacer()
         if agenda.access != .fullAccess {
           Button(
             agenda.requesting ? L10n.text("Requesting access…") : L10n.text("Enable Apple Calendar")
@@ -124,86 +222,24 @@ struct AgendaView: View {
             Task { await agenda.enable(date: start, days: days) }
           }.disabled(agenda.requesting)
         }
-      }.padding(.horizontal)
-      if range != "Day" {
+      }.controlSize(.small).padding(.horizontal, 18).padding(.vertical, 8)
+      Text(L10n.message(agenda.message)).font(.caption).foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(
+          .bottom, 8)
+      if range == "Month" {
         AgendaGrid(date: $date, range: range, events: agenda.events, items: model.items).padding(
-          .horizontal)
+          .horizontal, 18
+        ).padding(.bottom, 12)
       }
-      Text(L10n.message(agenda.message)).font(.caption).foregroundStyle(.secondary).padding(
-        .horizontal)
-      Menu {
-        if agenda.calendars.isEmpty {
-          if agenda.access == .fullAccess {
-            Text(L10n.text("No calendars found")).disabled(true)
-            Button(L10n.text("Open Calendar")) { NSWorkspace.shared.open(URL(string: "ical://")!) }
-          } else if agenda.access == .denied || agenda.access == .restricted {
-            Text(L10n.text("Calendar access is unavailable")).disabled(true)
-            Button(L10n.text("Open System Settings")) {
-              NSWorkspace.shared.open(
-                URL(fileURLWithPath: "/System/Applications/System Settings.app"))
-            }
-          } else {
-            Text(L10n.text("Calendar access is required")).disabled(true)
-            Button(L10n.text("Enable Apple Calendar")) {
-              Task { await agenda.enable(date: start, days: days) }
-            }.disabled(agenda.requesting)
-          }
-        } else {
-          ForEach(agenda.calendars, id: \.calendarIdentifier) { calendar in
-            Toggle(
-              isOn: Binding(
-                get: { agenda.selectedIDs.contains(calendar.calendarIdentifier) },
-                set: { agenda.select(calendar, enabled: $0, date: start, days: days) })
-            ) {
-              Text(calendar.title + " · " + calendar.source.title)
-            }
-          }
-          Divider()
-          Button(L10n.text("Select all")) { agenda.selectAll(true, date: start, days: days) }
-          Button(L10n.text("Deselect all")) { agenda.selectAll(false, date: start, days: days) }
-        }
-        Divider()
-        Button(L10n.text("Refresh calendars")) { agenda.refresh(start, days: days) }
-      } label: {
-        Label(
-          agenda.calendars.isEmpty
-            ? L10n.text("Choose calendars")
-            : L10n.format("Calendars (%d of %d)", agenda.selectedIDs.count, agenda.calendars.count),
-          systemImage: "calendar.badge.checkmark")
-      }.padding(.horizontal)
-      List {
-        ForEach(agenda.events, id: \.eventIdentifier) { event in
-          HStack {
-            Circle().fill(Color(nsColor: event.calendar.color)).frame(width: 8)
-            VStack(alignment: .leading) {
-              Text(event.title ?? L10n.text("Event")).font(.headline)
-              Text(event.startDate.formatted() + " · " + event.calendar.title).font(.caption)
-            }
-            Spacer()
-            Button(L10n.text("Open Calendar")) { NSWorkspace.shared.open(URL(string: "ical://")!) }
-          }
-        }
-        ForEach(
-          model.items.filter {
-            ["tasks", "reminders"].contains($0.kind) && !$0.deleted && !$0.archived
-              && ($0.date ?? .distantPast) >= Calendar.current.startOfDay(for: date)
-              && ($0.date ?? .distantFuture) < date.addingTimeInterval(Double(days) * 86400)
-          }
-        ) { item in
-          Label(
-            item.title + " · " + (item.date?.formatted() ?? ""),
-            systemImage: item.kind == "tasks" ? "checklist" : "alarm")
-        }
-      }
-      HebrewCalendarView().environmentObject(model).frame(maxHeight: 260)
-    }.padding(.vertical).onAppear { agenda.refresh(start, days: days) }.onChange(of: date) { _, _ in
-      agenda.refresh(start, days: days)
-    }.onChange(of: range) { _, _ in agenda.refresh(start, days: days) }
+      Divider()
+      AgendaTimeline(days: visibleDays, selectedDay: $date, entries: entries)
+    }.background(Color(nsColor: .windowBackgroundColor))
+      .onAppear { agenda.refresh(start, days: days) }
+      .onChange(of: date) { _, _ in agenda.refresh(start, days: days) }
+      .onChange(of: range) { _, _ in agenda.refresh(start, days: days) }
       .onReceive(
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
-      ) { _ in
-        agenda.refresh(start, days: days)
-      }
+      ) { _ in agenda.refresh(start, days: days) }
       .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
         agenda.refresh(start, days: days)
       }
@@ -374,8 +410,11 @@ struct TodayView: View {
               } else {
                 ForEach(upcoming.prefix(7)) { item in
                   HStack(spacing: 11) {
-                    Image(systemName: item.kind == "tasks" ? "circle" : "alarm").foregroundStyle(
-                      BeeTheme.accent)
+                    if item.kind == "tasks" {
+                      TaskCompletionButton(item: item)
+                    } else {
+                      Image(systemName: "alarm").foregroundStyle(BeeTheme.accent)
+                    }
                     VStack(alignment: .leading, spacing: 4) {
                       Text(item.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
                       Text(item.body["description"] ?? "").font(.system(size: 11)).foregroundStyle(

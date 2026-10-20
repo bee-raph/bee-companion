@@ -37,10 +37,12 @@ struct FilesView: View {
               model.openFile(item)
             }
           } label: {
-            Label(item.title, systemImage: item.kind == "folders" ? "folder" : "doc")
-              .labelStyle(.titleAndIcon)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .contentShape(Rectangle())
+            HStack(spacing: 6) {
+              FileIcon(item: item)
+              Text(item.title).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
           }.buttonStyle(.plain).help(L10n.text("Open"))
         }
         TableColumn(L10n.text("Size")) {

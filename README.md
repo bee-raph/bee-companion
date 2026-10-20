@@ -28,6 +28,14 @@ Lists and tables use native macOS selection, alternating rows, and compact **+ /
 - **Stocks:** London Strategic Edge instrument search, watchlist, latest available minute candle close, change against the previous completed daily bar, timestamps, and editable TradingView symbol mappings. Prices are derived from candles.
 - **Sharing:** the native share picker, plain-text WhatsApp compose flow, and LocalSend handoff for files. Destination applications must be installed or available. The user confirms recipients and sending; nothing is sent automatically.
 
+### Task icons, file attachments, and agenda
+
+Click a task's circle to mark it Done; click its checkmark to return it to To do. This works in Tasks, Today, and the agenda. In tasks, notes, and reminders, **Attach files…** opens the macOS file picker for any local file, including multiple selections. Files do not need to be imported into Files first. The app keeps a managed copy, records its attachment, and queues it for the usual offline synchronization. Copies and checksums are prepared off the UI thread. Managed copies also appear in Files. Removing an attachment keeps the file itself.
+
+Files use colored, type-specific icons for folders, images, PDF, audio, video, archives, spreadsheets, presentations, code, and other documents.
+
+The agenda opens in Day view with all 24 hourly slots, half-hour guides, an all-day strip, and a live current-time line. Use Today, previous/next, or the date picker to change the date. Week shows seven hourly columns; Month combines a date grid with the selected day's timeline. Calendar events use their calendar colors; overlapping events occupy separate columns, and overnight events are clipped to each day. Click an event to see its details. Timed tasks and reminders appear in the timeline; date-only items appear in the all-day strip. Apple Calendar stays read-only and local.
+
 ### Notes editing toolbar
 
 Notes always open in the native rich-text editor, with bold, italic, underline, font family, font size, images, bullet/numbered lists, and horizontal separators. Older Markdown notes are displayed as attributed text and saved as rich text when edited; Markdown is an import/export format, not an editing mode. **Export → Markdown** converts rich formatting into Markdown, including bold/italic, links, bullet lists, separators, and embedded images. Markdown cannot represent every rich font choice or layout. Unselected text stays unchanged when formatting; changes at the caret affect future typing.
@@ -244,6 +252,15 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 ---
 
 <a id="hebrew"></a>
+
+### סמלי משימות, צירוף קבצים וסדר היום
+
+לחצו על עיגול המשימה כדי לסמן אותה כבוצעה; לחצו על סימן הביקורת כדי להחזיר אותה לביצוע. הפעולה זמינה במשימות, במסך היום ובסדר היום. במשימות, בהערות ובתזכורות, **צירוף קבצים…** פותח את בוחר הקבצים של macOS ומאפשר לבחור כל קובץ מקומי, כולל כמה קבצים יחד, ללא ייבוא מוקדם לספרייה. האפליקציה שומרת עותק מנוהל, מצרפת אותו לרשומה ומוסיפה אותו לתור הסנכרון הרגיל. ההעתקה וחישוב חתימת הקובץ נעשים מחוץ לתהליכון הממשק. העותקים זמינים גם במסך הקבצים. הסרת הצירוף אינה מוחקת את הקובץ.
+
+מסך הקבצים מציג סמלים צבעוניים לפי סוג: תיקיות, תמונות, PDF, שמע, וידאו, ארכיונים, גיליונות, מצגות, קוד ומסמכים אחרים.
+
+סדר היום נפתח בתצוגת יום עם כל 24 השעות, קווי חצי שעה, אזור אירועים של יום שלם וקו זמן נוכחי. אפשר לנווט באמצעות היום, הקודם/הבא או בוחר התאריך. תצוגת שבוע מציגה שבע עמודות שעות; תצוגת חודש משלבת רשת תאריכים עם ציר הזמן של היום הנבחר. צבעי האירועים תואמים ללוח המקור, אירועים חופפים מוצגים זה לצד זה ואירועים שחוצים חצות נחתכים לפי היום. לחיצה על אירוע פותחת פרטים. משימות ותזכורות עם שעה מוצגות בציר הזמן, ופריטים עם תאריך בלבד באזור יום שלם. אירועי Apple Calendar נשארים מקומיים ובקריאה בלבד.
+
 
 ### סרגל עריכת הערות
 

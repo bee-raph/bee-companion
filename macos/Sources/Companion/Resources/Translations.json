@@ -312,7 +312,12 @@
     "Choose an image smaller than 20 MB.": "Choose an image smaller than 20 MB.",
     "Delete note %@?": "Delete note %@?",
     "Delete reminder %@?": "Delete reminder %@?",
-    "This item will be moved to Trash. Its attached library files will be kept.": "This item will be moved to Trash. Its attached library files will be kept."
+    "This item will be moved to Trash. Its attached library files will be kept.": "This item will be moved to Trash. Its attached library files will be kept.",
+    "Mark as done": "Mark as done",
+    "Mark as to do": "Mark as to do",
+    "Attach files…": "Attach files…",
+    "All-day": "All-day",
+    "Previous": "Previous"
   },
   "he": {
     "Today": "היום",
@@ -627,7 +632,12 @@
     "Choose an image smaller than 20 MB.": "בחרו תמונה שגודלה קטן מ־20 MB.",
     "Delete note %@?": "למחוק את ההערה %@?",
     "Delete reminder %@?": "למחוק את התזכורת %@?",
-    "This item will be moved to Trash. Its attached library files will be kept.": "הפריט יועבר לסל. קבצי הספרייה המצורפים אליו יישמרו."
+    "This item will be moved to Trash. Its attached library files will be kept.": "הפריט יועבר לסל. קבצי הספרייה המצורפים אליו יישמרו.",
+    "Mark as done": "סימון כבוצע",
+    "Mark as to do": "סימון לביצוע",
+    "Attach files…": "צירוף קבצים…",
+    "All-day": "כל היום",
+    "Previous": "הקודם"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -715,7 +725,7 @@
     "New reminder": "Nouveau rappel",
     "New task": "Nouvelle tâche",
     "New alarm": "Nouvelle alarme",
-    "Next": "À venir",
+    "Next": "Suivant",
     "No calendars found": "Aucun calendrier trouvé",
     "OK": "OK",
     "On your horizon": "À l’horizon",
@@ -942,7 +952,12 @@
     "Choose an image smaller than 20 MB.": "Choisissez une image de moins de 20 Mo.",
     "Delete note %@?": "Supprimer la note %@ ?",
     "Delete reminder %@?": "Supprimer le rappel %@ ?",
-    "This item will be moved to Trash. Its attached library files will be kept.": "Cet élément sera déplacé dans la corbeille. Ses fichiers joints seront conservés."
+    "This item will be moved to Trash. Its attached library files will be kept.": "Cet élément sera déplacé dans la corbeille. Ses fichiers joints seront conservés.",
+    "Mark as done": "Marquer comme terminé",
+    "Mark as to do": "Marquer comme à faire",
+    "Attach files…": "Joindre des fichiers…",
+    "All-day": "Toute la journée",
+    "Previous": "Précédent"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1257,7 +1272,12 @@
     "Choose an image smaller than 20 MB.": "Выберите изображение размером менее 20 МБ.",
     "Delete note %@?": "Удалить заметку %@?",
     "Delete reminder %@?": "Удалить напоминание %@?",
-    "This item will be moved to Trash. Its attached library files will be kept.": "Элемент будет перемещён в корзину. Прикреплённые файлы библиотеки сохранятся."
+    "This item will be moved to Trash. Its attached library files will be kept.": "Элемент будет перемещён в корзину. Прикреплённые файлы библиотеки сохранятся.",
+    "Mark as done": "Отметить выполненным",
+    "Mark as to do": "Отметить невыполненным",
+    "Attach files…": "Прикрепить файлы…",
+    "All-day": "Весь день",
+    "Previous": "Назад"
   },
   "es": {
     "Today": "Hoy",
@@ -1345,7 +1365,7 @@
     "New reminder": "Nuevo recordatorio",
     "New task": "Nueva tarea",
     "New alarm": "Nueva alarma",
-    "Next": "Próximo",
+    "Next": "Siguiente",
     "No calendars found": "No se encontraron calendarios",
     "OK": "Aceptar",
     "On your horizon": "En tu horizonte",
@@ -1572,6 +1592,11 @@
     "Choose an image smaller than 20 MB.": "Elige una imagen de menos de 20 MB.",
     "Delete note %@?": "¿Eliminar la nota %@?",
     "Delete reminder %@?": "¿Eliminar el recordatorio %@?",
-    "This item will be moved to Trash. Its attached library files will be kept.": "El elemento se moverá a la papelera. Sus archivos adjuntos de la biblioteca se conservarán."
+    "This item will be moved to Trash. Its attached library files will be kept.": "El elemento se moverá a la papelera. Sus archivos adjuntos de la biblioteca se conservarán.",
+    "Mark as done": "Marcar como completada",
+    "Mark as to do": "Marcar como pendiente",
+    "Attach files…": "Adjuntar archivos…",
+    "All-day": "Todo el día",
+    "Previous": "Anterior"
   }
 }

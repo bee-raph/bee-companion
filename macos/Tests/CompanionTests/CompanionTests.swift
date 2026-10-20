@@ -533,3 +533,117 @@ final class RichNotesWorkflowTests: XCTestCase {
     await fulfillment(of: [done], timeout: 5)
   }
 }
+
+final class WorkInteractionsTests: XCTestCase {
+  func testTaskIconTogglesOnlyCompletionStatus() {
+    let task = Item(
+      kind: "tasks",
+      body: [
+        "title": "Task", "description": "Keep this", "status": "In progress",
+        "date": "2026-10-20T10:00:00Z",
+      ])
+    let completed = TaskCompletion.toggled(task)
+    XCTAssertEqual(completed.body["status"], "Done")
+    XCTAssertEqual(completed.body["description"], task.body["description"])
+    XCTAssertEqual(completed.body["date"], task.body["date"])
+    XCTAssertEqual(completed.id, task.id)
+    XCTAssertEqual(TaskCompletion.toggled(completed).body["status"], "To do")
+    let note = Item(kind: "notes")
+    XCTAssertEqual(TaskCompletion.toggled(note), note)
+  }
+  func testAnyLocalFileCanBeCopiedAndAttachedOfflineForEveryOwnerKind() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("שלום.custom-extension")
+    let bytes = Data(repeating: 42, count: 1_100_000)
+    try bytes.write(to: source)
+    for kind in ["tasks", "notes", "reminders"] {
+      let owner = Item(kind: kind)
+      let file = Item(
+        kind: "files", body: ["title": source.lastPathComponent, "uploadPending": "true"])
+      let target = root.appendingPathComponent(file.id)
+      let prepared = try ImportedFile.prepare(source, target: target)
+      XCTAssertEqual(prepared.size, UInt64(bytes.count))
+      XCTAssertEqual(prepared.checksum.count, 64)
+      XCTAssertEqual(try Data(contentsOf: target), bytes)
+      let store = try LocalStore(url: root.appendingPathComponent(kind + ".sqlite"))
+      try store.save(owner)
+      try store.save(file)
+      let link = AttachmentFile.link(owner: owner, fileID: file.id)
+      try store.save(link)
+      XCTAssertEqual(
+        link.kind,
+        kind == "tasks"
+          ? "task_attachments" : kind == "notes" ? "note_attachments" : "reminder_attachments")
+      XCTAssertEqual(link.body["ownerID"], owner.id)
+      XCTAssertEqual(link.body["fileID"], file.id)
+      XCTAssertEqual(try store.pendingCount(), 3)
+    }
+  }
+  func testFileIconsDistinguishFolderImagePDFAndArchive() {
+    XCTAssertEqual(FileAppearance(Item(kind: "folders")).symbol, "folder.fill")
+    XCTAssertEqual(
+      FileAppearance(Item(kind: "files", body: ["title": "photo.png"])).symbol, "photo.fill")
+    XCTAssertEqual(
+      FileAppearance(Item(kind: "files", body: ["title": "document.pdf"])).symbol,
+      "doc.richtext.fill")
+    XCTAssertEqual(
+      FileAppearance(Item(kind: "files", body: ["title": "bundle.zip"])).symbol, "archivebox.fill")
+  }
+}
+final class AgendaLayoutTests: XCTestCase {
+  let parser = ISO8601DateFormatter()
+  var utc: Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+    return calendar
+  }
+  func date(_ text: String) -> Date { parser.date(from: text)! }
+  func testOverlapsUseSeparateColumnsAndAdjacentEventsReuseSpace() {
+    let day = date("2026-10-20T00:00:00Z")
+    let spans = [
+      AgendaSpan(
+        id: "a", start: day.addingTimeInterval(9 * 3600), end: day.addingTimeInterval(10 * 3600)),
+      AgendaSpan(
+        id: "b", start: day.addingTimeInterval(9.5 * 3600), end: day.addingTimeInterval(10.5 * 3600)
+      ),
+      AgendaSpan(
+        id: "c", start: day.addingTimeInterval(11 * 3600), end: day.addingTimeInterval(12 * 3600)),
+    ]
+    let placements = AgendaLayout.placements(spans, day: day, calendar: utc)
+    XCTAssertEqual(placements.map(\.columns), [2, 2, 1])
+    XCTAssertNotEqual(placements[0].column, placements[1].column)
+    XCTAssertEqual(placements[0].start, 540)
+    XCTAssertEqual(placements[0].end, 600)
+  }
+  func testCrossMidnightEventsAreClippedAndOtherDaysExcluded() {
+    let day = date("2026-10-20T00:00:00Z")
+    let spans = [
+      AgendaSpan(
+        id: "overnight", start: day.addingTimeInterval(-3600), end: day.addingTimeInterval(3600)),
+      AgendaSpan(
+        id: "late", start: day.addingTimeInterval(23 * 3600), end: day.addingTimeInterval(25 * 3600)
+      ),
+      AgendaSpan(
+        id: "tomorrow", start: day.addingTimeInterval(25 * 3600),
+        end: day.addingTimeInterval(26 * 3600)),
+    ]
+    let placed = AgendaLayout.placements(spans, day: day, calendar: utc)
+    XCTAssertEqual(placed.count, 2)
+    XCTAssertEqual(placed[0].start, 0)
+    XCTAssertEqual(placed[0].end, 60)
+    XCTAssertEqual(placed[1].start, 1380)
+    XCTAssertEqual(placed[1].end, 1440)
+  }
+  func testDSTDaysUseWallClockHoursRatherThanElapsedHours() {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "America/New_York")!
+    let morning = date("2026-03-08T13:00:00Z")  // 09:00 after the clock change.
+    let result = AgendaLayout.placements(
+      [AgendaSpan(id: "morning", start: morning, end: morning.addingTimeInterval(3600))],
+      day: morning, calendar: calendar)
+    XCTAssertEqual(result.first?.start, 540)
+    XCTAssertEqual(result.first?.end, 600)
+  }
+}
