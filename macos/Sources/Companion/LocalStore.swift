@@ -78,6 +78,9 @@ final class LocalStore {
       return try JSONDecoder().decode(Mutation.self, from: row["payload"] as Data)
     }
   }
+  func pendingCount() throws -> Int {
+    try db.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM outbox") ?? 0 }
+  }
   func pending() throws -> [Mutation] {
     try db.read { db in
       try Data.fetchAll(db, sql: "SELECT payload FROM outbox ORDER BY sequence").map {

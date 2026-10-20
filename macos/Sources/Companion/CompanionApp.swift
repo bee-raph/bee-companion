@@ -26,7 +26,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         .environmentObject(shabbat)
         .onAppear { configureAlarms() }
         .onChange(of: model.configuration?.instanceID) { _, _ in configureAlarms() }
-        .onReceive(model.$items) { values in
+        .onReceive(
+          model.$items.map {
+            $0.filter {
+              ["reminders", "reminder_attachments", "reminder_occurrences"].contains($0.kind)
+            }
+          }.removeDuplicates()
+        ) { values in
           alarms.configure(
             instance: model.configuration?.instanceID ?? "local", save: { model.save($0) },
             open: { id in
@@ -378,18 +384,20 @@ struct ItemEditor: View {
             if item.body["format"] != "rtf" { Toggle(L10n.text("Preview"), isOn: $preview) }
             Button(L10n.text("Convert copy")) { convert() }
           }
-          if !preview || item.body["format"] == "rtf" { NoteToolbar(editor: noteEditing) }
+          if !preview || item.body["format"] == "rtf" {
+            NoteToolbar(editor: noteEditing)
+          }
           if item.body["format"] == "rtf" {
             NoteTextEditor(
               text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: true,
-              editor: noteEditing
+              editor: noteEditing, commit: commitNote
             ).frame(minHeight: 320)
           } else if preview {
             NoteMarkdownPreview(source: item.body["text"] ?? "")
           } else {
             NoteTextEditor(
               text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: false,
-              editor: noteEditing
+              editor: noteEditing, commit: commitNote
             ).frame(minHeight: 320).border(.quaternary)
           }
         }
@@ -424,7 +432,20 @@ struct ItemEditor: View {
         item.body.removeValue(forKey: "date")
       }
     }
-    .onChange(of: item) { _, new in model.save(new) }
+    .onChange(of: item) { _, new in
+      if model.items.first(where: { $0.id == new.id }) != new { model.save(new) }
+    }
+  }
+  func commitNote(_ text: String, _ rtf: String, _ rtfd: String) {
+    var updated = item
+    updated.revision = model.items.first(where: { $0.id == item.id })?.revision ?? item.revision
+    updated.body["text"] = text
+    if updated.body["format"] == "rtf" {
+      updated.body["rtf"] = rtf
+      updated.body["rtfd"] = rtfd
+    }
+    item = updated
+    model.save(updated)
   }
   var attachments: some View {
     VStack(alignment: .leading) {

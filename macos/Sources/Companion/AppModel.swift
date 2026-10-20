@@ -53,14 +53,23 @@ import SwiftUI
     do {
       items = try store.all()
       L10n.language = language
-      pending = try store.pending().count
+      pending = try store.pendingCount()
       conflicts = try store.conflicts()
     } catch { self.error = error.localizedDescription }
   }
   func save(_ item: Item) {
     do {
       try store.save(item)
-      reload()
+      var saved = item
+      if let index = items.firstIndex(where: { $0.id == item.id }) {
+        saved.revision = items[index].revision
+        items[index] = saved
+      } else {
+        items.append(saved)
+      }
+      if item.kind == "user_settings" { L10n.language = language }
+      pending = try store.pendingCount()
+      if !conflicts.isEmpty { conflicts = try store.conflicts() }
     } catch { self.error = error.localizedDescription }
   }
   func add(_ kind: String) -> Item {

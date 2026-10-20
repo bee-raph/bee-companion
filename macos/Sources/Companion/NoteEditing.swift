@@ -5,11 +5,17 @@ import UniformTypeIdentifiers
 @MainActor final class NoteEditing: ObservableObject {
   weak var view: NSTextView?
   var rich = false
+  var selection: NSRange?
+  static let fontFamilies = NSFontManager.shared.availableFontFamilies.sorted()
   @Published var family = NSFont.systemFont(ofSize: 14).familyName ?? "Helvetica"
   @Published var size: CGFloat = 14
   func focus() -> NSTextView? {
     guard let view else { return nil }
+    let range = selection ?? view.selectedRange()
+    let typing = view.typingAttributes
     view.window?.makeFirstResponder(view)
+    view.setSelectedRange(range)
+    if range.length == 0 { view.typingAttributes = typing }
     return view
   }
   func wrap(_ marker: String, end: String? = nil) {
@@ -43,12 +49,25 @@ import UniformTypeIdentifiers
         (value[.underlineStyle] as? Int ?? 0) == 0 ? NSUnderlineStyle.single.rawValue : 0
     }
   }
-  func font() {
-    guard let view = focus() else { return }
-    let font =
-      NSFont(name: family, size: size) ?? NSFontManager.shared.font(
-        withFamily: family, traits: [], weight: 5, size: size) ?? NSFont.systemFont(ofSize: size)
-    if rich { attributes { $0[.font] = font } } else { view.font = font }
+  func fontFamily() {
+    if !rich {
+      view?.font = NSFont(name: family, size: size)
+      return
+    }
+    attributes { value in
+      let current = value[.font] as? NSFont ?? NSFont.systemFont(ofSize: 14)
+      value[.font] = NSFontManager.shared.convert(current, toFamily: self.family)
+    }
+  }
+  func fontSize() {
+    if !rich {
+      view?.font = NSFont.systemFont(ofSize: size)
+      return
+    }
+    attributes { value in
+      let current = value[.font] as? NSFont ?? NSFont.systemFont(ofSize: 14)
+      value[.font] = NSFontManager.shared.convert(current, toSize: self.size)
+    }
   }
   private func attributes(_ transform: (inout [NSAttributedString.Key: Any]) -> Void) {
     guard let view = focus() else { return }
@@ -146,17 +165,17 @@ struct NoteToolbar: View {
     }
     HStack(spacing: 4) {
       Picker(L10n.text("Font"), selection: $editor.family) {
-        ForEach(NSFontManager.shared.availableFontFamilies.sorted(), id: \.self) {
+        ForEach(NoteEditing.fontFamilies, id: \.self) {
           Text($0).tag($0)
         }
       }.labelsHidden().frame(width: 145).help(L10n.text("Font"))
-        .onChange(of: editor.family) { _, _ in editor.font() }
+        .onChange(of: editor.family) { _, _ in editor.fontFamily() }
       Picker(L10n.text("Font size"), selection: $editor.size) {
         ForEach([10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72], id: \.self) {
           Text(String($0)).tag(CGFloat($0))
         }
       }.labelsHidden().frame(width: 65).help(L10n.text("Font size"))
-        .onChange(of: editor.size) { _, _ in editor.font() }
+        .onChange(of: editor.size) { _, _ in editor.fontSize() }
     }
     HStack(spacing: 4) {
       tool("Insert image", "photo") { editor.image() }
@@ -177,6 +196,7 @@ struct NoteTextEditor: NSViewRepresentable {
   @Binding var rtfd: String
   var rich: Bool
   var editor: NoteEditing
+  var commit: ((String, String, String) -> Void)? = nil
   func makeCoordinator() -> Coordinator { Coordinator(self) }
   func makeNSView(context: Context) -> NSScrollView {
     let scroll = NSTextView.scrollableTextView()
@@ -187,6 +207,7 @@ struct NoteTextEditor: NSViewRepresentable {
     view.font = .systemFont(ofSize: 14)
     view.textContainerInset = NSSize(width: 10, height: 10)
     view.delegate = context.coordinator
+    context.coordinator.textView = view
     if rich, let value = NoteDocument.decode(rtf: rtf, rtfd: rtfd) {
       view.textStorage?.setAttributedString(value)
     } else {
@@ -194,6 +215,7 @@ struct NoteTextEditor: NSViewRepresentable {
     }
     editor.view = view
     editor.rich = rich
+    editor.selection = view.selectedRange()
     return scroll
   }
   func updateNSView(_ scroll: NSScrollView, context: Context) {
@@ -201,16 +223,67 @@ struct NoteTextEditor: NSViewRepresentable {
     editor.view = scroll.documentView as? NSTextView
     editor.rich = rich
   }
-  final class Coordinator: NSObject, NSTextViewDelegate {
+  static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+    coordinator.flush()
+  }
+  @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
     var parent: NoteTextEditor
-    init(_ parent: NoteTextEditor) { self.parent = parent }
+    weak var textView: NSTextView?
+    private var timer: Timer?
+    private var dirty = false
+    init(_ parent: NoteTextEditor) {
+      self.parent = parent
+      super.init()
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(flush), name: NSApplication.willTerminateNotification, object: nil
+      )
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(flush), name: NSWindow.willCloseNotification, object: nil)
+    }
+    deinit {
+      timer?.invalidate()
+      NotificationCenter.default.removeObserver(self)
+    }
+    func textViewDidChangeSelection(_ notification: Notification) {
+      guard let view = notification.object as? NSTextView,
+        view.window == nil || view.window?.firstResponder === view
+      else { return }
+      parent.editor.selection = view.selectedRange()
+    }
     func textDidChange(_ notification: Notification) {
-      guard let view = notification.object as? NSTextView else { return }
-      parent.text = view.string
+      dirty = true
+      timer?.invalidate()
+      timer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: false) { [weak self] _ in
+        MainActor.assumeIsolated { self?.flush() }
+      }
+    }
+    func textDidEndEditing(_ notification: Notification) { flush() }
+    @objc func flush() {
+      timer?.invalidate()
+      timer = nil
+      guard dirty, let view = textView else { return }
+      dirty = false
+      let text = view.string
+      var rtf = parent.rtf
+      var rtfd = parent.rtfd
       if parent.rich {
         let range = NSRange(location: 0, length: view.string.utf16.count)
-        parent.rtf = view.rtf(from: range)?.base64EncodedString() ?? ""
-        parent.rtfd = view.rtfd(from: range)?.base64EncodedString() ?? ""
+        rtf = view.rtf(from: range)?.base64EncodedString() ?? ""
+        var attachments = false
+        view.textStorage?.enumerateAttribute(.attachment, in: range) { value, _, stop in
+          if value != nil {
+            attachments = true
+            stop.pointee = true
+          }
+        }
+        rtfd = attachments ? (view.rtfd(from: range)?.base64EncodedString() ?? "") : ""
+      }
+      if let commit = parent.commit {
+        commit(text, rtf, rtfd)
+      } else {
+        parent.text = text
+        parent.rtf = rtf
+        parent.rtfd = rtfd
       }
     }
   }

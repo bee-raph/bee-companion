@@ -372,3 +372,107 @@ final class NoteEditingTests: XCTestCase {
     XCTAssertEqual(try store.pending().count, 1)
   }
 }
+
+final class EditorRegressionTests: XCTestCase {
+  @MainActor func testEveryFormattingActionPreservesUnselectedText() throws {
+    for action in 0..<5 {
+      let view = NSTextView(frame: .zero)
+      view.isRichText = true
+      let original = NSAttributedString(
+        string: "left middle right",
+        attributes: [.font: NSFont.systemFont(ofSize: 13), .foregroundColor: NSColor.systemRed])
+      view.textStorage?.setAttributedString(original)
+      let editor = NoteEditing()
+      editor.view = view
+      editor.rich = true
+      // Simulate a popup taking focus after the user selected 'middle'.
+      editor.selection = NSRange(location: 5, length: 6)
+      view.setSelectedRange(NSRange(location: 0, length: original.length))
+      switch action {
+      case 0: editor.trait(.boldFontMask, markdown: "**")
+      case 1: editor.trait(.italicFontMask, markdown: "*")
+      case 2: editor.underline()
+      case 3:
+        editor.family = "Courier"
+        editor.fontFamily()
+      default:
+        editor.size = 32
+        editor.fontSize()
+      }
+      let storage = try XCTUnwrap(view.textStorage)
+      for range in [NSRange(location: 0, length: 5), NSRange(location: 11, length: 6)] {
+        XCTAssertTrue(
+          storage.attributedSubstring(from: range).isEqual(
+            to: original.attributedSubstring(from: range)),
+          "Action \(action) changed unselected text")
+      }
+      XCTAssertEqual(view.string, original.string)
+      XCTAssertEqual(view.selectedRange(), NSRange(location: 5, length: 6))
+    }
+  }
+  @MainActor func testCaretFormattingChangesOnlyFutureTyping() throws {
+    let view = NSTextView(frame: .zero)
+    view.isRichText = true
+    let original = NSAttributedString(
+      string: "BeforeAfter", attributes: [.font: NSFont.systemFont(ofSize: 13)])
+    view.textStorage?.setAttributedString(original)
+    view.setSelectedRange(NSRange(location: 6, length: 0))
+    let editor = NoteEditing()
+    editor.view = view
+    editor.rich = true
+    editor.trait(.boldFontMask, markdown: "**")
+    editor.trait(.italicFontMask, markdown: "*")
+    editor.underline()
+    editor.family = "Courier"
+    editor.fontFamily()
+    editor.size = 28
+    editor.fontSize()
+    XCTAssertTrue(try XCTUnwrap(view.textStorage).isEqual(to: original))
+    view.insertText("X", replacementRange: view.selectedRange())
+    XCTAssertEqual(view.string, "BeforeXAfter")
+    let font = try XCTUnwrap(
+      view.textStorage?.attribute(.font, at: 6, effectiveRange: nil) as? NSFont)
+    XCTAssertEqual(font.pointSize, 28)
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
+    XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.italicFontMask))
+    XCTAssertEqual(
+      view.textStorage?.attribute(.underlineStyle, at: 6, effectiveRange: nil) as? Int,
+      NSUnderlineStyle.single.rawValue)
+  }
+  @MainActor func testTypingBurstCommitsOnceAndFlushesLatestText() {
+    let view = NSTextView(frame: .zero)
+    view.isRichText = true
+    let editor = NoteEditing()
+    editor.view = view
+    editor.rich = true
+    var commits = 0
+    var saved = ""
+    var imageData = ""
+    let parent = NoteTextEditor(
+      text: .constant(""), rtf: .constant(""), rtfd: .constant(""), rich: true, editor: editor,
+      commit: { text, _, rtfd in
+        commits += 1
+        saved = text
+        imageData = rtfd
+      })
+    let coordinator = NoteTextEditor.Coordinator(parent)
+    coordinator.textView = view
+    for index in 0..<100 {
+      view.string = "Draft \(index)"
+      coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
+    }
+    XCTAssertEqual(commits, 0)
+    coordinator.flush()
+    XCTAssertEqual(commits, 1)
+    XCTAssertEqual(saved, "Draft 99")
+    XCTAssertEqual(imageData, "", "Text-only notes should not serialize duplicate RTFD data")
+    coordinator.flush()
+    XCTAssertEqual(commits, 1)
+    view.string = "Final unsaved text"
+    coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: view))
+    coordinator.textDidEndEditing(
+      Notification(name: NSText.didEndEditingNotification, object: view))
+    XCTAssertEqual(commits, 2)
+    XCTAssertEqual(saved, "Final unsaved text")
+  }
+}
