@@ -28,9 +28,20 @@ struct FilesView: View {
       }.padding()
       Table(rows, selection: $selected) {
         TableColumn(L10n.text("Name")) { item in
-          Label(item.title, systemImage: item.kind == "folders" ? "folder" : "doc").onTapGesture(
-            count: 2
-          ) { if item.kind == "folders" { parent = item.id } else { model.openFile(item) } }
+          Button {
+            if item.kind == "folders" {
+              parent = item.id
+              selected = nil
+            } else {
+              selected = item.id
+              model.openFile(item)
+            }
+          } label: {
+            Label(item.title, systemImage: item.kind == "folders" ? "folder" : "doc")
+              .labelStyle(.titleAndIcon)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .contentShape(Rectangle())
+          }.buttonStyle(.plain).help(L10n.text("Open"))
         }
         TableColumn(L10n.text("Size")) {
           Text(
