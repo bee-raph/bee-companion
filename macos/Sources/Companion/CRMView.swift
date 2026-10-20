@@ -233,7 +233,7 @@ struct CRMContactDetail: View {
               }
               Text(action.body["description"] ?? "").textSelection(.enabled)
               if let reminder = action.body["reminderDate"],
-                let date = ISO8601DateFormatter().date(from: reminder)
+                let date = ItemTimestamp.date(reminder)
               {
                 Label {
                   Text(date, format: .dateTime)
@@ -382,7 +382,7 @@ struct CRMActionEditor: View {
     _date = State(initialValue: initial.date ?? Date())
     _reminder = State(initialValue: initial.body["reminderDate"] != nil)
     _reminderDate = State(
-      initialValue: initial.body["reminderDate"].flatMap { ISO8601DateFormatter().date(from: $0) }
+      initialValue: initial.body["reminderDate"].flatMap { ItemTimestamp.date($0) }
         ?? Date().addingTimeInterval(3600))
   }
   func field(_ key: String, fallback: String = "") -> Binding<String> {

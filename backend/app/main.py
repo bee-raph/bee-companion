@@ -6,6 +6,8 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
+from .concurrency import singleflight
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from .db import (
@@ -308,6 +310,10 @@ async def upload_chunk(ident: uuid.UUID, request: Request, offset: int):
         data.extend(chunk)
         if len(data) > 8 * 1024 * 1024:
             raise HTTPException(413, "Maximum chunk is 8 MiB")
+    return await run_in_threadpool(store_upload_chunk, ident, offset, data)
+
+
+def store_upload_chunk(ident, offset, data):
     with Session.begin() as db:
         lock(db)
         row = db.get(Upload, str(ident))
@@ -327,7 +333,32 @@ async def upload_chunk(ident: uuid.UUID, request: Request, offset: int):
 
 
 @app.post("/api/v1/files/uploads/{ident}/complete", dependencies=[Depends(auth)])
+@singleflight(lambda ident: "upload-complete:" + str(ident))
 def upload_complete(ident: uuid.UUID):
+    with Session() as db:
+        row = db.get(Upload, str(ident))
+        if not row:
+            raise HTTPException(404)
+        if row.complete:
+            return {"versionID": row.id}
+        if row.offset != row.size:
+            raise HTTPException(409, "Incomplete upload")
+        temporary = root / (row.id + ".part")
+        target = root / row.id
+        source = temporary if temporary.exists() else target
+        if not source.exists():
+            raise HTTPException(409, "Incomplete upload")
+        expected_checksum = row.checksum
+        size = row.size
+    # Complete-sized uploads cannot accept additional bytes; hash outside the sync lock.
+    try:
+        stream = source.open("rb")
+    except FileNotFoundError:
+        stream = target.open("rb")
+    with stream:
+        checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+    if checksum != expected_checksum:
+        raise HTTPException(422, "Checksum mismatch")
     with Session.begin() as db:
         lock(db)
         row = db.get(Upload, str(ident))
@@ -335,15 +366,8 @@ def upload_complete(ident: uuid.UUID):
             raise HTTPException(404)
         if row.complete:
             return {"versionID": row.id}
-        temporary = root / (row.id + ".part")
-        target = root / row.id
-        source = temporary if temporary.exists() else target
-        if row.offset != row.size or not source.exists():
+        if row.offset != size or row.checksum != expected_checksum:
             raise HTTPException(409, "Incomplete upload")
-        with source.open("rb") as stream:
-            checksum = hashlib.file_digest(stream, "sha256").hexdigest()
-        if checksum != row.checksum:
-            raise HTTPException(422, "Checksum mismatch")
         if temporary.exists():
             temporary.replace(target)
         db.add(
@@ -366,6 +390,7 @@ def download(ident: uuid.UUID):
             select(Version)
             .where(Version.file_id == str(ident))
             .order_by(Version.created.desc())
+            .limit(1)
         )
         if not version:
             raise HTTPException(404)

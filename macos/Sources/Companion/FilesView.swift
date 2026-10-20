@@ -196,9 +196,8 @@ struct FilesView: View {
         let source = try await model.localFile(item)
         let destination = model.cache.appendingPathComponent("sharing").appendingPathComponent(
           item.id)
-        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let url = destination.appendingPathComponent(item.title)
-        try Data(contentsOf: source).write(to: url, options: .atomic)
+        try await BackgroundWork.run { try FileWork.copy(source, to: url) }
         if localSend {
           guard
             let app = NSWorkspace.shared.urlForApplication(
@@ -215,12 +214,8 @@ struct FilesView: View {
   }
 }
 @MainActor enum Sharing {
-  static func plain(_ item: Item) -> String {
-    [
-      item.title, item.body["description"], item.body["text"], item.body["date"],
-      item.body["status"],
-    ].compactMap { $0 }.joined(separator: "\n\n")
-  }
+  static func plain(_ item: Item) -> String { NoteFileWork.plain(item) }
+
   static func present(_ items: [Any]) {
     guard let view = NSApp.keyWindow?.contentView else { return }
     NSSharingServicePicker(items: items).show(
@@ -237,36 +232,10 @@ struct FilesView: View {
     let panel = NSSavePanel()
     panel.nameFieldStringValue = item.title + "." + format
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    do {
-      let data: Data
-      if format == "rtfd",
-        let value = NoteDocument.decode(rtf: item.body["rtf"] ?? "", rtfd: item.body["rtfd"] ?? "")
-      {
-        let wrapper = try value.fileWrapper(
-          from: NSRange(location: 0, length: value.length),
-          documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd])
-        try wrapper.write(to: url, options: .atomic, originalContentsURL: nil)
-        return
-      } else if format == "rtf" {
-        if item.kind == "notes", let stored = item.body["rtf"],
-          let rich = Data(base64Encoded: stored)
-        {
-          data = rich
-        } else {
-          let text = NSAttributedString(string: plain(item))
-          data = try text.data(
-            from: NSRange(location: 0, length: text.length),
-            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
-        }
-      } else if format == "md", item.kind == "notes", item.body["format"] == "rtf",
-        let document = NoteDocument.decode(
-          rtf: item.body["rtf"] ?? "", rtfd: item.body["rtfd"] ?? "")
-      {
-        data = Data(NoteMarkdown.export(document).utf8)
-      } else {
-        data = Data(plain(item).utf8)
-      }
-      try data.write(to: url, options: .atomic)
-    } catch { NSAlert(error: error).runModal() }
+    Task {
+      do {
+        try await BackgroundWork.run { try NoteFileWork.write(item, format: format, to: url) }
+      } catch { NSAlert(error: error).runModal() }
+    }
   }
 }

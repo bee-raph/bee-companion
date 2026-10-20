@@ -1,6 +1,8 @@
 """London Strategic Edge adapter; credentials never leave this process."""
 
 import json, threading, time
+from concurrent.futures import ThreadPoolExecutor
+from .concurrency import keyed_lock
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from lse import LSE, LSEError
@@ -11,18 +13,19 @@ _calls = []
 
 
 def cached(key, ttl, fetch):
-    with _guard:
+    with keyed_lock(key):
         with Session() as db:
             previous = db.get(Cache, key)
             if previous and previous.expires > time.time():
                 return json.loads(previous.body)
-        now = time.time()
-        _calls[:] = [stamp for stamp in _calls if stamp > now - 60]
-        if len(_calls) >= 60:
-            raise HTTPException(
-                429, "Market provider request budget exhausted; retry shortly"
-            )
-        _calls.append(now)
+        with _guard:
+            now = time.time()
+            _calls[:] = [stamp for stamp in _calls if stamp > now - 60]
+            if len(_calls) >= 60:
+                raise HTTPException(
+                    429, "Market provider request budget exhausted; retry shortly"
+                )
+            _calls.append(now)
         try:
             result = fetch()
         except Exception as error:
@@ -54,10 +57,10 @@ def client():
 
 
 def search(query):
-    catalog = cached("lse:catalog", 86400, lambda: client().catalog())
     query = query.strip().lower()
     if not query:
         return {"instruments": []}
+    catalog = cached("lse:catalog", 86400, lambda: client().catalog())
     results = [
         r
         for r in catalog
@@ -99,10 +102,14 @@ def quotes(symbols):
     names = list(dict.fromkeys(s.strip() for s in symbols.split(",") if s.strip()))
     if len(names) > 30 or any(len(s) > 80 for s in names):
         raise HTTPException(422, "Maximum 30 symbols per request")
-    output = []
-    for symbol in names:
+
+    def load(symbol):
         try:
-            output.append(cached("lse:quote:" + symbol, 60, lambda: quote(symbol)))
+            return cached("lse:quote:" + symbol, 60, lambda: quote(symbol))
         except HTTPException as error:
-            output.append({"symbol": symbol, "error": error.detail})
-    return {"quotes": output}
+            return {"symbol": symbol, "error": error.detail}
+
+    if not names:
+        return {"quotes": []}
+    with ThreadPoolExecutor(max_workers=min(4, len(names))) as executor:
+        return {"quotes": list(executor.map(load, names))}

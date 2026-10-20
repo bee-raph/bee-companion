@@ -9,10 +9,12 @@ enum CalendarSelection {
 }
 
 @MainActor final class AgendaService: ObservableObject {
-  let store = EKEventStore()
+  lazy var store = EKEventStore()
+  private let reader = CalendarReader()
+  private var refreshTask: Task<Void, Never>?
   private let authorization: () -> EKAuthorizationStatus
-  @Published var events: [EKEvent] = []
-  @Published var calendars: [EKCalendar] = []
+  @Published var events: [CalendarEvent] = []
+  @Published var calendars: [CalendarDescriptor] = []
   @Published var access: EKAuthorizationStatus = .notDetermined
   @Published var requesting = false
   var storedCalendarIDs: [String]?
@@ -31,6 +33,7 @@ enum CalendarSelection {
       stored: storedCalendarIDs)
   }
   func refresh(_ date: Date, days: Int = 7) {
+    refreshTask?.cancel()
     access = authorization()
     guard access == .fullAccess else {
       calendars = []
@@ -46,29 +49,25 @@ enum CalendarSelection {
       }
       return
     }
-    calendars = store.calendars(for: .event).sorted {
-      $0.title.localizedStandardCompare($1.title) == .orderedAscending
+    let selected = storedCalendarIDs
+    refreshTask = Task { [weak self] in
+      guard let self else { return }
+      let snapshot = await reader.snapshot(date: date, days: days, selected: selected)
+      guard !Task.isCancelled else { return }
+      calendars = snapshot.calendars
+      events = snapshot.events
+      if calendars.isEmpty {
+        message =
+          "No calendars are available. Add a calendar or account in the Calendar app, then refresh."
+      } else if selectedIDs.isEmpty {
+        message = "No calendars selected. Choose calendars from the menu below."
+      } else {
+        message = "Apple Calendar data stays on this Mac."
+      }
     }
-    guard !calendars.isEmpty else {
-      events = []
-      message =
-        "No calendars are available. Add a calendar or account in the Calendar app, then refresh."
-      return
-    }
-    let chosen = calendars.filter { selectedIDs.contains($0.calendarIdentifier) }
-    guard !chosen.isEmpty else {
-      events = []
-      message = "No calendars selected. Choose calendars from the menu below."
-      return
-    }
-    let start = Calendar.current.startOfDay(for: date)
-    let end = Calendar.current.date(byAdding: .day, value: days, to: start)!
-    events = store.events(
-      matching: store.predicateForEvents(withStart: start, end: end, calendars: chosen)
-    ).sorted { $0.startDate < $1.startDate }
-    message = "Apple Calendar data stays on this Mac."
   }
-  func select(_ calendar: EKCalendar, enabled: Bool, date: Date, days: Int) {
+
+  func select(_ calendar: CalendarDescriptor, enabled: Bool, date: Date, days: Int) {
     var ids = selectedIDs
     if enabled {
       ids.insert(calendar.calendarIdentifier)
@@ -212,7 +211,7 @@ struct AgendaView: View {
                   get: { agenda.selectedIDs.contains(calendar.calendarIdentifier) },
                   set: { agenda.select(calendar, enabled: $0, date: start, days: days) })
               ) {
-                Text(calendar.title + " · " + calendar.source.title)
+                Text(calendar.title + " · " + calendar.sourceTitle)
               }
             }
             Divider()
@@ -541,10 +540,26 @@ struct WorldClocksView: View {
   }
 }
 
+enum AgendaDayCounts {
+  static func values(events: [CalendarEvent], items: [Item], calendar: Calendar = .current)
+    -> [Date: Int]
+  {
+    var counts: [Date: Int] = [:]
+    for event in events { counts[calendar.startOfDay(for: event.startDate), default: 0] += 1 }
+    for item in items
+    where !item.deleted && !item.archived
+      && ["tasks", "reminders"].contains(item.kind) && item.body["status"] != "Cancelled"
+    {
+      if let date = item.date { counts[calendar.startOfDay(for: date), default: 0] += 1 }
+    }
+    return counts
+  }
+}
+
 struct AgendaGrid: View {
   @Binding var date: Date
   var range: String
-  var events: [EKEvent]
+  var events: [CalendarEvent]
   var items: [Item]
   var dates: [Date] {
     let calendar = Calendar.current
@@ -556,7 +571,10 @@ struct AgendaGrid: View {
     return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
   }
   var body: some View {
-    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1) {
+    let counts = AgendaDayCounts.values(events: events, items: items)
+    return LazyVGrid(
+      columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1
+    ) {
       ForEach(dates, id: \.self) { day in
         Button {
           date = day
@@ -565,12 +583,7 @@ struct AgendaGrid: View {
             Text(day.formatted(.dateTime.weekday(.abbreviated))).font(.caption2).foregroundStyle(
               .secondary)
             Text(day.formatted(.dateTime.day())).font(.headline)
-            let count =
-              events.filter { Calendar.current.isDate($0.startDate, inSameDayAs: day) }.count
-              + items.filter {
-                !$0.deleted && !$0.archived
-                  && $0.date.map { Calendar.current.isDate($0, inSameDayAs: day) } == true
-              }.count
+            let count = counts[Calendar.current.startOfDay(for: day)] ?? 0
             Text(count == 0 ? " " : L10n.format("%d items", count)).font(.caption2)
           }.frame(maxWidth: .infinity).padding(7)
             .foregroundStyle(

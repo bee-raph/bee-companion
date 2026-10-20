@@ -3,6 +3,7 @@ import CryptoKit
 import SwiftUI
 
 @MainActor final class AppModel: ObservableObject {
+  @Published private(set) var contentRevision = 0
   @Published var items: [Item] = []
   @Published var conflicts: [Conflict] = []
   @Published var configuration: InstanceConfiguration?
@@ -16,6 +17,9 @@ import SwiftUI
   var api: API?
   var directory: URL
   private var syncTask: Task<Void, Never>?
+  private let workingCopyScanner = WorkingCopyScanner()
+  private var checkingWorkingCopies = false
+  private var editGeneration = 0
   private var scheduledSync: Task<Void, Never>?
   init() {
     directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -39,6 +43,11 @@ import SwiftUI
       }
     }
   }
+  deinit {
+    syncTask?.cancel()
+    scheduledSync?.cancel()
+    for task in transfers.values { task.cancel() }
+  }
   func openStore() throws {
     let instance = directory.appendingPathComponent(configuration?.instanceID ?? "local")
     try FileManager.default.createDirectory(at: instance, withIntermediateDirectories: true)
@@ -51,14 +60,41 @@ import SwiftUI
     return url
   }
   func reload() {
+    editGeneration += 1
     do {
-      items = try store.all()
+      let loaded = try store.all()
+      if items != loaded {
+        items = loaded
+        contentRevision += 1
+      }
       L10n.language = language
       pending = try store.pendingCount()
       conflicts = try store.conflicts()
     } catch { self.error = error.localizedDescription }
   }
+  private func reloadInBackground() async {
+    let activeStore = store!
+    do {
+      while true {
+        let generation = editGeneration
+        let snapshot = try await BackgroundWork.run {
+          (try activeStore.all(), try activeStore.pendingCount(), try activeStore.conflicts())
+        }
+        guard activeStore === store else { return }
+        guard generation == editGeneration else { continue }
+        if items != snapshot.0 {
+          items = snapshot.0
+          contentRevision += 1
+        }
+        pending = snapshot.1
+        conflicts = snapshot.2
+        L10n.language = language
+        return
+      }
+    } catch { self.error = error.localizedDescription }
+  }
   func save(_ input: Item) {
+    editGeneration += 1
     let item = TaskCompletion.normalized(input, previous: items.first { $0.id == input.id })
     do {
       try store.save(item)
@@ -69,6 +105,7 @@ import SwiftUI
       } else {
         items.append(saved)
       }
+      contentRevision += 1
       if item.kind == "user_settings" { L10n.language = language }
       pending = try store.pendingCount()
       if !conflicts.isEmpty { conflicts = try store.conflicts() }
@@ -123,7 +160,8 @@ import SwiftUI
     panel.allowedContentTypes = [.json]
     guard panel.runModal() == .OK, let url = panel.url else { return }
     do {
-      guard !syncing, configuration == nil || (pending == 0 && conflicts.isEmpty) else {
+      guard !syncing, transfers.isEmpty, configuration == nil || (pending == 0 && conflicts.isEmpty)
+      else {
         throw CompanionError.message(
           "Resolve conflicts and synchronize pending changes before switching instances")
       }
@@ -155,10 +193,9 @@ import SwiftUI
   func sync() async {
     guard !syncing, let api else { return }
     syncing = true
-    defer {
-      syncing = false
-      reload()
-    }
+    defer { syncing = false }
+    let activeStore = store!
+    var changed = false
     do {
       let remote: RemoteInstance = try await api.request("instance", authorized: false)
       guard remote.instanceID == configuration?.instanceID, remote.apiVersion == 1 else {
@@ -171,20 +208,28 @@ import SwiftUI
         try await sendFile(item)
       }
       // Send one mutation at a time: accepting a revision rebases later queued edits.
-      while let mutation = try store.nextMutation() {
+      while let mutation = try await BackgroundWork.run({ try activeStore.nextMutation() }) {
         let response: PushResult = try await api.request(
           "sync/push", method: "POST",
-          body: JSONEncoder().encode(PushRequest(mutations: [mutation])))
-        for result in response.results { try store.accept(result) }
+          body: try await BackgroundWork.run {
+            try JSONEncoder().encode(PushRequest(mutations: [mutation]))
+          })
+        try await BackgroundWork.run {
+          for result in response.results { try activeStore.accept(result) }
+        }
+        changed = changed || !response.results.isEmpty
       }
       var more = true
       while more {
-        let result: PullResult = try await api.request("sync/pull?cursor=\(try store.cursor())")
-        try store.apply(result)
+        let cursor = try await BackgroundWork.run { try activeStore.cursor() }
+        let result: PullResult = try await api.request("sync/pull?cursor=\(cursor)")
+        try await BackgroundWork.run { try activeStore.apply(result) }
+        changed = changed || !result.changes.isEmpty
         more = result.hasMore
       }
       message = "Up to date · " + Date().formatted(date: .omitted, time: .shortened)
     } catch { message = "Offline / sync paused: " + error.localizedDescription }
+    if changed { await reloadInBackground() }
   }
   func resolve(_ conflict: Conflict, keepLocal: Bool) {
     do {
@@ -233,12 +278,14 @@ import SwiftUI
     do {
       let access = url.startAccessingSecurityScopedResource()
       defer { if access { url.stopAccessingSecurityScopedResource() } }
+      let activeStore = store
       var item =
         existing ?? Item(kind: "files", body: ["title": url.lastPathComponent, "parent": parent])
       let target = cache.appendingPathComponent(item.id)
       let prepared = try await Task.detached(priority: .userInitiated) {
         try ImportedFile.prepare(url, target: target)
       }.value
+      guard activeStore === store else { return }
       item.body["checksum"] = prepared.checksum
       item.body["modified"] = ISO8601DateFormatter().string(from: Date())
       item.body["size"] = String(prepared.size)
@@ -248,7 +295,6 @@ import SwiftUI
         save(AttachmentFile.link(owner: owner, fileID: item.id))
       }
       try await sendFile(item)
-      reload()
     } catch is CancellationError {} catch { self.error = error.localizedDescription }
   }
   func sendFile(_ item: Item) async throws {
@@ -263,11 +309,14 @@ import SwiftUI
     }
     struct Offset: Decodable { var offset: Int }
     struct Complete: Decodable { var versionID: String }
-    let data = try Data(contentsOf: cache.appendingPathComponent(item.id), options: .mappedIfSafe)
+    let source = cache.appendingPathComponent(item.id)
+    let size = try await BackgroundWork.run {
+      try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+    }
     let stateURL = cache.appendingPathComponent(item.id + ".transfer.json")
     let checksum = item.body["checksum"] ?? ""
     var start: Upload?
-    if let stored = try? Data(contentsOf: stateURL),
+    if let stored = try? await BackgroundWork.run({ try Data(contentsOf: stateURL) }),
       let state = try? JSONDecoder().decode(State.self, from: stored), state.checksum == checksum
     {
       start = try? await api.request("files/uploads/\(state.upload.id)")
@@ -276,24 +325,34 @@ import SwiftUI
       let created: Upload = try await api.request(
         "files/uploads", method: "POST",
         body: JSONSerialization.data(withJSONObject: [
-          "fileID": item.id, "size": data.count, "checksum": checksum,
+          "fileID": item.id, "size": size, "checksum": checksum,
         ]))
       start = created
-      try JSONEncoder().encode(State(checksum: checksum, upload: created)).write(
-        to: stateURL, options: .atomic)
+      try await BackgroundWork.run {
+        try JSONEncoder().encode(State(checksum: checksum, upload: created)).write(
+          to: stateURL, options: .atomic)
+      }
     }
     guard let start else { throw CompanionError.message("Cannot start upload") }
     var offset = start.offset
-    while offset < data.count {
+    while offset < size {
       try Task.checkCancellation()
-      let end = min(offset + 4 * 1024 * 1024, data.count)
+      let startOffset = offset
+      let chunk = try await BackgroundWork.run {
+        try FileWork.chunk(source, offset: startOffset, count: 4 * 1024 * 1024)
+      }
+      guard !chunk.isEmpty else { throw CompanionError.message("Invalid server response") }
+      let end = offset + chunk.count
       let next: Offset = try JSONDecoder().decode(
         Offset.self,
         from: await api.raw(
           "files/uploads/\(start.id)?offset=\(offset)", method: "PUT",
-          body: data.subdata(in: offset..<end), contentType: "application/octet-stream"))
+          body: chunk, contentType: "application/octet-stream"))
+      guard next.offset > offset, next.offset <= end else {
+        throw CompanionError.message("Invalid server response")
+      }
       offset = next.offset
-      transferProgress[item.id] = data.isEmpty ? 1 : Double(offset) / Double(data.count)
+      transferProgress[item.id] = size == 0 ? 1 : Double(offset) / Double(size)
     }
     let result: Complete = try await api.request(
       "files/uploads/\(start.id)/complete", method: "POST")
@@ -311,35 +370,30 @@ import SwiftUI
     let target = cache.appendingPathComponent(item.id)
     if !FileManager.default.fileExists(atPath: target.path) {
       guard let api else { throw CompanionError.message("File is not cached offline") }
-      let data = try await api.raw("files/\(item.id)/content")
-      let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-      guard checksum == item.body["checksum"] else {
-        throw CompanionError.message("Downloaded file checksum mismatch")
-      }
-      try data.write(to: target, options: .atomic)
+      try await api.download(
+        "files/\(item.id)/content", to: target, checksum: item.body["checksum"] ?? "")
     }
     return target
   }
   func openFile(_ item: Item, export: Bool = false) {
     Task {
       do {
+        let activeStore = store
         let source = try await localFile(item)
+        guard activeStore === store else { return }
         if export {
           let panel = NSSavePanel()
           panel.nameFieldStringValue = item.title
           if panel.runModal() == .OK, let target = panel.url {
-            try Data(contentsOf: source).write(to: target, options: .atomic)
+            try await BackgroundWork.run { try FileWork.copy(source, to: target) }
           }
         } else {
           let working = cache.appendingPathComponent("working").appendingPathComponent(item.id)
-          try FileManager.default.createDirectory(at: working, withIntermediateDirectories: true)
           guard item.title != "..", !item.title.contains("/"), !item.title.contains("\\") else {
             throw CompanionError.message("Invalid file name")
           }
           let target = working.appendingPathComponent(item.title)
-          if !FileManager.default.fileExists(atPath: target.path) {
-            try FileManager.default.copyItem(at: source, to: target)
-          }
+          try await BackgroundWork.run { try FileWork.copy(source, to: target, overwrite: false) }
           NSWorkspace.shared.open(target)
         }
       } catch { self.error = error.localizedDescription }
@@ -352,14 +406,15 @@ import SwiftUI
           item.kind == "tasks"
           ? "task_attachments" : item.kind == "notes" ? "note_attachments" : "reminder_attachments"
         let links = items.filter { !$0.deleted && $0.kind == kind && $0.body["ownerID"] == item.id }
+        let activeStore = store
         var payload: [Any] = [Sharing.plain(item)]
         for link in links {
           if let file = items.first(where: { $0.id == link.body["fileID"] && !$0.deleted }) {
             let source = try await localFile(file)
+            guard activeStore === store else { return }
             let folder = cache.appendingPathComponent("sharing").appendingPathComponent(file.id)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let target = folder.appendingPathComponent(file.title)
-            try Data(contentsOf: source).write(to: target, options: .atomic)
+            try await BackgroundWork.run { try FileWork.copy(source, to: target) }
             payload.append(target)
           }
         }
@@ -371,39 +426,19 @@ import SwiftUI
     let panel = NSOpenPanel()
     panel.allowsMultipleSelection = true
     guard panel.runModal() == .OK else { return }
-    for url in panel.urls {
-      do {
-        var item = Item(
-          kind: "notes", body: ["title": url.deletingPathExtension().lastPathComponent])
-        if url.pathExtension.lowercased() == "rtfd" {
-          let rich = try NSAttributedString(
-            url: url, options: [.documentType: NSAttributedString.DocumentType.rtfd],
-            documentAttributes: nil)
-          item.body["format"] = "rtf"
-          item.body["rtfd"] = try rich.data(
-            from: NSRange(location: 0, length: rich.length),
-            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtfd]
-          ).base64EncodedString()
-          item.body["text"] = rich.string
+    let urls = panel.urls
+    let activeStore = store
+    Task {
+      for url in urls {
+        do {
+          let item = try await BackgroundWork.run { try NoteFileWork.read(url) }
+          guard activeStore === store else { return }
           save(item)
-          continue
-        }
-        let data = try Data(contentsOf: url)
-        if url.pathExtension.lowercased() == "rtf" {
-          guard let rich = NSAttributedString(rtf: data, documentAttributes: nil) else {
-            throw CompanionError.message("Invalid RTF")
-          }
-          item.body["format"] = "rtf"
-          item.body["rtf"] = data.base64EncodedString()
-          item.body["text"] = rich.string
-        } else {
-          item.body["format"] = "markdown"
-          item.body["text"] = String(decoding: data, as: UTF8.self)
-        }
-        save(item)
-      } catch { self.error = error.localizedDescription }
+        } catch { self.error = error.localizedDescription }
+      }
     }
   }
+
   func purge(_ item: Item) {
     Task {
       do {
@@ -430,19 +465,26 @@ import SwiftUI
     }
   }
   func checkWorkingCopies() {
-    for item in items where item.kind == "files" && !item.deleted {
-      let target = cache.appendingPathComponent("working").appendingPathComponent(item.id)
-        .appendingPathComponent(item.title)
-      guard let data = try? Data(contentsOf: target),
-        SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined()
-          != item.body["checksum"]
-      else { continue }
-      let alert = NSAlert()
-      alert.messageText = L10n.format("Upload changes to %@?", item.title)
-      alert.addButton(withTitle: L10n.text("Upload new version"))
-      alert.addButton(withTitle: L10n.text("Later"))
-      if alert.runModal() == .alertFirstButtonReturn {
-        Task { await uploadFile(target, existing: item) }
+    guard !checkingWorkingCopies else { return }
+    checkingWorkingCopies = true
+    let originalStore = store
+    let candidates = items
+    let root = cache
+    Task {
+      defer { checkingWorkingCopies = false }
+      let changed = await workingCopyScanner.changes(in: candidates, cache: root)
+      guard originalStore === store else { return }
+      for change in changed {
+        guard let item = items.first(where: { $0.id == change.item.id }), !item.deleted,
+          item.body["checksum"] == change.item.body["checksum"]
+        else { continue }
+        let alert = NSAlert()
+        alert.messageText = L10n.format("Upload changes to %@?", item.title)
+        alert.addButton(withTitle: L10n.text("Upload new version"))
+        alert.addButton(withTitle: L10n.text("Later"))
+        if alert.runModal() == .alertFirstButtonReturn {
+          await uploadFile(change.url, existing: item)
+        }
       }
     }
   }

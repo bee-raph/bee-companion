@@ -36,7 +36,7 @@ final class CRMTests: XCTestCase {
     let saved = try XCTUnwrap(try local.all().first)
     XCTAssertEqual(saved.id, contact.id)
     XCTAssertEqual(saved.body["emails"], contact.body["emails"])
-    let loaded = await CRMLoadedNote.load(saved)
+    let loaded = await LoadedNoteDocument.load(saved)
     let reopened = loaded.document
     XCTAssertEqual(reopened.string, document.string)
     let font = try XCTUnwrap(reopened.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
@@ -88,16 +88,16 @@ final class CRMTests: XCTestCase {
     let encoded = try NoteSnapshot(source, rich: true).encode()
     let contact = Item(
       kind: "crm_contacts", body: ["text": encoded.text, "rtf": encoded.rtf, "rtfd": encoded.rtfd])
-    let loaded = await CRMLoadedNote.load(contact)
+    let loaded = await LoadedNoteDocument.load(contact)
     XCTAssertEqual(loaded.document.string, source.string)
     let font = try XCTUnwrap(
       loaded.document.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
     XCTAssertEqual(font.pointSize, 22)
     XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
-    let legacy = await CRMLoadedNote.load(
+    let legacy = await LoadedNoteDocument.load(
       Item(kind: "crm_contacts", body: ["notes": "Legacy note"]))
     XCTAssertEqual(legacy.document.string, "Legacy note")
-    let empty = await CRMLoadedNote.load(Item(kind: "crm_contacts"))
+    let empty = await LoadedNoteDocument.load(Item(kind: "crm_contacts"))
     XCTAssertEqual(empty.document.length, 0)
   }
 

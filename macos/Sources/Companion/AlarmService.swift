@@ -48,6 +48,7 @@ struct Recurrence {
 }
 
 @MainActor final class AlarmService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
+  private var scheduleTask: Task<Void, Never>?
   var items: [Item] = []
   var timer: Timer?
   var windows: [String: NSWindow] = [:]
@@ -87,7 +88,7 @@ struct Recurrence {
     _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [
       .alert, .sound, .badge,
     ])
-    await schedule()
+    await queueSchedule().value
   }
   func update(_ values: [Item]) {
     links = values.filter { !$0.deleted && $0.kind == "reminder_attachments" }
@@ -99,7 +100,7 @@ struct Recurrence {
     for (id, itemID) in pendingWindows {
       if let item = items.first(where: { $0.id == itemID }), !handled(id) { show(item, id: id) }
     }
-    Task { await schedule() }
+    _ = queueSchedule()
     tick()
   }
   func occurrenceID(_ item: Item, _ date: Date) -> String {
@@ -119,10 +120,22 @@ struct Recurrence {
     previous = now.addingTimeInterval(-5)
     UserDefaults.standard.set(previous, forKey: "alarm.lastCheck." + instanceID)
   }
+  private func queueSchedule() -> Task<Void, Never> {
+    let previous = scheduleTask
+    previous?.cancel()
+    let next = Task { [weak self] in
+      await previous?.value
+      do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+      guard !Task.isCancelled else { return }
+      await self?.schedule()
+    }
+    scheduleTask = next
+    return next
+  }
   func schedule() async {
     let center = UNUserNotificationCenter.current()
     let settings = await center.notificationSettings()
-    guard settings.authorizationStatus == .authorized else { return }
+    guard !Task.isCancelled, settings.authorizationStatus == .authorized else { return }
     center.removeAllPendingNotificationRequests()
     let now = Date()
     let end = now.addingTimeInterval(86400 * 30)
@@ -130,6 +143,7 @@ struct Recurrence {
       Recurrence.occurrences(item, after: now, until: end).map { (item, $0) }
     }.sorted { $0.1 < $1.1 }.prefix(60)
     for (item, date) in occurrences {
+      guard !Task.isCancelled else { return }
       let id = occurrenceID(item, date)
       guard !handled(id) else { continue }
       let content = UNMutableNotificationContent()

@@ -32,9 +32,12 @@ actor API {
   let configuration: InstanceConfiguration
   var tokens: Tokens?
   private var refreshFlight: Task<Void, Error>?
-  init(_ config: InstanceConfiguration) {
-    configuration = config
-    tokens = Keychain.load(config.instanceID).flatMap {
+  private var credentialsLoaded = false
+  init(_ config: InstanceConfiguration) { configuration = config }
+  private func loadCredentialsIfNeeded() {
+    guard !credentialsLoaded else { return }
+    credentialsLoaded = true
+    tokens = Keychain.load(configuration.instanceID).flatMap {
       try? JSONDecoder().decode(Tokens.self, from: $0)
     }
   }
@@ -52,6 +55,7 @@ actor API {
   func store(_ value: Tokens) throws {
     try Keychain.save(JSONEncoder().encode(value), key: configuration.instanceID)
     tokens = value
+    credentialsLoaded = true
   }
   func signOut() async throws {
     let _: [String: Bool] = try await request("auth/logout", method: "POST")
@@ -81,6 +85,34 @@ actor API {
     defer { refreshFlight = nil }
     try await flight.value
   }
+  func download(_ path: String, to target: URL, checksum: String, retry: Bool = true) async throws {
+    loadCredentialsIfNeeded()
+    guard let url = URL(string: configuration.apiBaseURL.absoluteString + "/api/v1/" + path),
+      let tokens
+    else { throw CompanionError.message("Sign in in Settings") }
+    var request = URLRequest(url: url)
+    request.timeoutInterval = 30
+    request.setValue("Bearer " + tokens.accessToken, forHTTPHeaderField: "Authorization")
+    let usedToken = tokens.accessToken
+    let (temporary, response) = try await URLSession.shared.download(for: request)
+    defer { try? FileManager.default.removeItem(at: temporary) }
+    guard let http = response as? HTTPURLResponse else {
+      throw CompanionError.message("Invalid server response")
+    }
+    if http.statusCode == 401, retry, let current = self.tokens {
+      if current.accessToken == usedToken { try await refreshSession(current.refreshToken) }
+      return try await download(path, to: target, checksum: checksum, retry: false)
+    }
+    guard (200..<300).contains(http.statusCode) else {
+      throw CompanionError.message("Invalid server response")
+    }
+    try await BackgroundWork.run {
+      guard try FileWork.checksum(temporary) == checksum else {
+        throw CompanionError.message("Downloaded file checksum mismatch")
+      }
+      try FileWork.copy(temporary, to: target)
+    }
+  }
   func raw(
     _ path: String, method: String = "GET", body: Data? = nil, authorized: Bool = true,
     retry: Bool = true, contentType: String = "application/json"
@@ -94,6 +126,7 @@ actor API {
     request.timeoutInterval = 30
     request.setValue(contentType, forHTTPHeaderField: "Content-Type")
     if authorized {
+      loadCredentialsIfNeeded()
       guard let tokens else { throw CompanionError.message("Sign in in Settings") }
       request.setValue("Bearer " + tokens.accessToken, forHTTPHeaderField: "Authorization")
     }

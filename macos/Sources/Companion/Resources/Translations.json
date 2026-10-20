@@ -378,7 +378,8 @@
     "Invalid CRM action type": "Invalid CRM action type",
     "Unknown CRM record kind": "Unknown CRM record kind",
     "Contact note": "Contact note",
-    "Loading contact note…": "Loading contact note…"
+    "Loading contact note…": "Loading contact note…",
+    "Loading note…": "Loading note…"
   },
   "he": {
     "Today": "היום",
@@ -759,7 +760,8 @@
     "Invalid CRM action type": "סוג פעולת CRM לא תקין",
     "Unknown CRM record kind": "סוג רשומת CRM לא מוכר",
     "Contact note": "הערת איש קשר",
-    "Loading contact note…": "טעינת הערת איש הקשר…"
+    "Loading contact note…": "טעינת הערת איש הקשר…",
+    "Loading note…": "טעינת הערה…"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -1140,7 +1142,8 @@
     "Invalid CRM action type": "Type d’action CRM invalide",
     "Unknown CRM record kind": "Type d’enregistrement CRM inconnu",
     "Contact note": "Note du contact",
-    "Loading contact note…": "Chargement de la note du contact…"
+    "Loading contact note…": "Chargement de la note du contact…",
+    "Loading note…": "Chargement de la note…"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1521,7 +1524,8 @@
     "Invalid CRM action type": "Недопустимый тип действия CRM",
     "Unknown CRM record kind": "Неизвестный тип записи CRM",
     "Contact note": "Заметка контакта",
-    "Loading contact note…": "Загрузка заметки контакта…"
+    "Loading contact note…": "Загрузка заметки контакта…",
+    "Loading note…": "Загрузка заметки…"
   },
   "es": {
     "Today": "Hoy",
@@ -1902,6 +1906,7 @@
     "Invalid CRM action type": "Tipo de acción CRM no válido",
     "Unknown CRM record kind": "Tipo de registro CRM desconocido",
     "Contact note": "Nota del contacto",
-    "Loading contact note…": "Cargando nota del contacto…"
+    "Loading contact note…": "Cargando nota del contacto…",
+    "Loading note…": "Cargando nota…"
   }
 }

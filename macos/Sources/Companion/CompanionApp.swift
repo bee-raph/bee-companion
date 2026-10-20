@@ -221,9 +221,11 @@ struct ItemListView: View {
   @State var selected: String?
   @State var filter = "All"
   @State private var taskTab = "Active"
+  @State private var searchIDs = Set<String>()
+  @State private var matchedQuery = ""
   private var showsArchived: Bool { archived || (kind == "tasks" && taskTab == "Archived") }
   var rows: [Item] {
-    let ids = query.isEmpty ? nil : (try? model.store.search(query))
+    let ids: Set<String>? = query.isEmpty ? nil : (matchedQuery == query ? searchIDs : [])
     return model.items.filter { item in
       guard WorkListScope(kind: kind, archived: showsArchived).contains(item),
         ids == nil || ids!.contains(item.id)
@@ -323,6 +325,21 @@ struct ItemListView: View {
           symbol: kind == "notes" ? "square.and.pencil" : "rectangle.and.pencil.and.ellipsis")
       }
     }
+    .task(id: "\(model.contentRevision):" + query) {
+      guard !query.isEmpty else {
+        matchedQuery = ""
+        searchIDs = []
+        return
+      }
+      do {
+        try await Task.sleep(for: .milliseconds(150))
+        let activeStore = model.store!
+        let matches = try await BackgroundWork.run { try activeStore.search(query) }
+        guard !Task.isCancelled else { return }
+        searchIDs = matches
+        matchedQuery = query
+      } catch is CancellationError {} catch { model.error = error.localizedDescription }
+    }
   }
 }
 struct ItemEditor: View {
@@ -395,12 +412,7 @@ struct ItemEditor: View {
         }
         if item.kind == "notes" {
           Text(L10n.text("Rich text")).font(.headline)
-          NoteToolbar(editor: noteEditing)
-          NoteTextEditor(
-            text: text("text"), rtf: text("rtf"), rtfd: text("rtfd"), rich: true,
-            editor: noteEditing, commit: commitNote,
-            initialMarkdown: item.body["format"] == "rtf" ? nil : item.body["text"]
-          ).frame(minHeight: 360)
+          LoadedNoteEditor(item: item, editor: noteEditing, commit: commitNote)
 
         }
         if ["tasks", "notes", "reminders"].contains(item.kind) { attachments }

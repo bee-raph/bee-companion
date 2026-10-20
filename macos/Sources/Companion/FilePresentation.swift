@@ -4,6 +4,15 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct FileAppearance {
+  private final class Cached: NSObject {
+    let value: FileAppearance
+    init(_ value: FileAppearance) { self.value = value }
+  }
+  private static let cache: NSCache<NSString, Cached> = {
+    let cache = NSCache<NSString, Cached>()
+    cache.countLimit = 512
+    return cache
+  }()
   let symbol: String
   let color: Color
   init(_ item: Item) {
@@ -12,7 +21,12 @@ struct FileAppearance {
       color = .blue
       return
     }
-    let type = UTType(filenameExtension: (item.title as NSString).pathExtension)
+    let extensionKey = (item.title as NSString).pathExtension.lowercased()
+    if let cached = Self.cache.object(forKey: extensionKey as NSString) {
+      self = cached.value
+      return
+    }
+    let type = UTType(filenameExtension: extensionKey)
     if type?.conforms(to: .image) == true {
       symbol = "photo.fill"
       color = .purple
@@ -41,6 +55,7 @@ struct FileAppearance {
       symbol = "doc.text.fill"
       color = .blue
     }
+    Self.cache.setObject(Cached(self), forKey: extensionKey as NSString)
   }
 }
 struct FileIcon: View {
@@ -90,9 +105,11 @@ enum TaskCompletion {
 }
 enum AttachmentFile {
   static func link(owner: Item, fileID: String) -> Item {
-    let kind = ["crm_contacts", "crm_actions"].contains(owner.kind) ? "crm_attachments" :
-      owner.kind == "tasks"
-      ? "task_attachments" : owner.kind == "notes" ? "note_attachments" : "reminder_attachments"
+    let kind =
+      ["crm_contacts", "crm_actions"].contains(owner.kind)
+      ? "crm_attachments"
+      : owner.kind == "tasks"
+        ? "task_attachments" : owner.kind == "notes" ? "note_attachments" : "reminder_attachments"
     return Item(kind: kind, body: ["ownerID": owner.id, "fileID": fileID])
   }
 }

@@ -5,9 +5,9 @@ struct FeedConfiguration: Codable, Identifiable, Equatable {
   var title = ""
   var url = ""
 }
-struct RSSResponse: Codable {
-  struct Feed: Codable, Identifiable {
-    struct Article: Codable, Identifiable {
+struct RSSResponse: Codable, Sendable {
+  struct Feed: Codable, Identifiable, Sendable {
+    struct Article: Codable, Identifiable, Sendable {
       var id: String
       var title: String
       var summary: String
@@ -24,7 +24,7 @@ struct RSSResponse: Codable {
   }
   var feeds: [Feed]
 }
-struct WeatherResponse: Codable {
+struct WeatherResponse: Codable, Sendable {
   var temperature: Double
   var feelsLike: Double
   var humidity: Double
@@ -103,42 +103,60 @@ enum ReaderPreferences {
   @Published var refreshing = false
   @Published var lastRefresh: Date?
   private var instance = ""
-  func restore(_ model: AppModel) {
+  private var restoreTask: Task<Void, Never>?
+  private var refreshGeneration = 0
+  private var locationGeneration = 0
+  func restore(_ model: AppModel) async {
     let identity = model.configuration?.instanceID ?? "local"
-    guard identity != instance else { return }
+    if identity == instance {
+      await restoreTask?.value
+      return
+    }
+    restoreTask?.cancel()
     instance = identity
+    refreshGeneration += 1
+    locationGeneration += 1
+    refreshing = false
     feeds = []
     weather = nil
     quotes = []
     zmanim = []
-    if let data = try? Data(contentsOf: model.cache.appendingPathComponent("rss-cache.json")),
-      let stored = try? JSONDecoder().decode(RSSResponse.self, from: data)
-    {
-      feeds = stored.feeds.map {
-        var feed = $0
+    let root = model.cache
+    let task = Task { [weak self] in
+      async let savedFeeds = ReaderCache.read(
+        RSSResponse.self, from: root.appendingPathComponent("rss-cache.json"))
+      async let savedWeather = ReaderCache.read(
+        WeatherResponse.self, from: root.appendingPathComponent("weather-cache.json"))
+      let stored = await (savedFeeds, savedWeather)
+      guard let self, !Task.isCancelled, self.instance == identity else { return }
+      self.feeds = (stored.0?.feeds ?? []).map { value in
+        var feed = value
         feed.stale = true
         return feed
       }
+      if var saved = stored.1 {
+        saved.stale = true
+        self.weather = saved
+      }
+      self.restoreTask = nil
     }
-    if let data = try? Data(contentsOf: model.cache.appendingPathComponent("weather-cache.json")),
-      var stored = try? JSONDecoder().decode(WeatherResponse.self, from: data)
-    {
-      stored.stale = true
-      weather = stored
-    }
+    restoreTask = task
+    await task.value
   }
   func refreshLocation(_ model: AppModel, enabled: Bool = true) async {
     guard enabled else { return }
-    restore(model)
+    await restore(model)
+    locationGeneration += 1
+    let generation = locationGeneration
     let location = CompanionLocation(model.preferences.body)
     let key = location.cacheKey(model.configuration?.instanceID ?? "local")
     let date = location.day()
     zmanim = ZmanimEntry.sorted(
       UserDefaults.standard.dictionary(forKey: key + ".zmanim." + date) as? [String: String] ?? [:])
     let weatherURL = model.cache.appendingPathComponent("weather-" + location.identity + ".json")
-    if let data = try? Data(contentsOf: weatherURL),
-      var saved = try? JSONDecoder().decode(WeatherResponse.self, from: data)
-    {
+    let cachedWeather = await ReaderCache.read(WeatherResponse.self, from: weatherURL)
+    guard generation == locationGeneration, !Task.isCancelled else { return }
+    if var saved = cachedWeather {
       saved.stale = true
       weather = saved
     } else {
@@ -150,34 +168,46 @@ enum ReaderPreferences {
       return
     }
     guard let api = model.api else { return }
-    async let times: Void = loadTimes(api, query: query, date: date, key: key)
-    async let conditions: Void = loadWeather(api, query: query, url: weatherURL)
+    async let times: Void = loadTimes(
+      api, query: query, date: date, key: key, generation: generation)
+    async let conditions: Void = loadWeather(
+      api, query: query, url: weatherURL, generation: generation)
     _ = await (times, conditions)
   }
-  private func loadTimes(_ api: API, query: String, date: String, key: String) async {
+  private func loadTimes(_ api: API, query: String, date: String, key: String, generation: Int)
+    async
+  {
     struct Times: Decodable { let times: [String: String] }
     do {
       let response: Times = try await api.request("calendar/zmanim?date=\(date)&" + query)
+      guard generation == locationGeneration, !Task.isCancelled else { return }
       zmanim = ZmanimEntry.sorted(response.times)
       UserDefaults.standard.set(response.times, forKey: key + ".zmanim." + date)
-    } catch { messages.append("Zmanim unavailable; check location and connection.") }
+    } catch {
+      if generation == locationGeneration, !Task.isCancelled {
+        messages.append("Zmanim unavailable; check location and connection.")
+      }
+    }
   }
-  private func loadWeather(_ api: API, query: String, url: URL) async {
+  private func loadWeather(_ api: API, query: String, url: URL, generation: Int) async {
     do {
       let response: WeatherResponse = try await api.request("weather?" + query)
+      guard generation == locationGeneration, !Task.isCancelled else { return }
       weather = response
-      try JSONEncoder().encode(response).write(to: url, options: .atomic)
+      try await ReaderCache.write(response, to: url)
     } catch {
+      guard generation == locationGeneration, !Task.isCancelled else { return }
       weather?.stale = true
       messages.append("Weather: " + error.localizedDescription)
     }
   }
   func refresh(_ model: AppModel, dashboard: Bool = false) async {
-    restore(model)
+    await restore(model)
     guard !refreshing else { return }
     async let location: Void = refreshLocation(model, enabled: dashboard)
+    let generation = refreshGeneration
     refreshing = true
-    defer { refreshing = false }
+    defer { if generation == refreshGeneration { refreshing = false } }
     messages = []
     guard let api = model.api else {
       messages = ["Connect your backend in Settings. Saved articles remain available offline."]
@@ -185,10 +215,11 @@ enum ReaderPreferences {
     }
     do {
       let result: RSSResponse = try await api.request("rss/feeds")
+      guard generation == refreshGeneration, !Task.isCancelled else { return }
       feeds = result.feeds
-      try JSONEncoder().encode(result).write(
-        to: model.cache.appendingPathComponent("rss-cache.json"), options: .atomic)
+      try await ReaderCache.write(result, to: model.cache.appendingPathComponent("rss-cache.json"))
     } catch {
+      guard generation == refreshGeneration, !Task.isCancelled else { return }
       feeds = feeds.map {
         var feed = $0
         feed.stale = true
@@ -197,6 +228,7 @@ enum ReaderPreferences {
       messages.append("RSS: " + error.localizedDescription)
     }
     await location
+    guard generation == refreshGeneration, !Task.isCancelled else { return }
     guard dashboard else {
       lastRefresh = Date()
       return
@@ -216,9 +248,25 @@ enum ReaderPreferences {
       do {
         let result: QuoteResponse = try await api.request(
           "market/quotes?" + (parts.percentEncodedQuery ?? ""))
+        guard generation == refreshGeneration, !Task.isCancelled else { return }
         quotes = result.quotes
-      } catch { messages.append("Stocks: " + error.localizedDescription) }
+      } catch {
+        if generation == refreshGeneration, !Task.isCancelled {
+          messages.append("Stocks: " + error.localizedDescription)
+        }
+      }
     }
     lastRefresh = Date()
+  }
+}
+
+enum ReaderCache {
+  static func read<Value: Decodable & Sendable>(_ type: Value.Type, from url: URL) async -> Value? {
+    try? await BackgroundWork.run { try JSONDecoder().decode(type, from: Data(contentsOf: url)) }
+  }
+  static func write<Value: Encodable & Sendable>(_ value: Value, to url: URL) async throws {
+    try await BackgroundWork.run {
+      try JSONEncoder().encode(value).write(to: url, options: .atomic)
+    }
   }
 }

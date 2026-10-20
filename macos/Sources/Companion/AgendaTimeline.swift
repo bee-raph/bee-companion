@@ -117,16 +117,16 @@ struct AgendaTimeline: View {
         Text(L10n.text("All-day")).font(.caption).foregroundStyle(.secondary).frame(width: gutter)
           .padding(.top, 8)
         ForEach(days, id: \.self) { day in
+          let allDay = entries.filter { $0.allDay && belongs($0, to: day) }
           ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 4) {
-              let allDay = entries.filter { $0.allDay && belongs($0, to: day) }
               if allDay.isEmpty { Text("—").foregroundStyle(.tertiary).font(.caption) }
               ForEach(allDay) { entry in eventCard(entry, compact: true).frame(height: 28) }
             }.padding(6).frame(maxWidth: .infinity, alignment: .topLeading)
           }.frame(
             height: min(
               120,
-              CGFloat(max(1, entries.filter { $0.allDay && belongs($0, to: day) }.count)) * 32 + 12)
+              CGFloat(max(1, allDay.count)) * 32 + 12)
           )
         }
       }.frame(maxHeight: 120)
@@ -156,10 +156,12 @@ struct AgendaTimeline: View {
                     }.frame(height: hourHeight).offset(y: CGFloat(hour) * hourHeight)
                   }
                   let timed = entries.filter { !$0.allDay && belongs($0, to: day) }
+                  let timedByID = Dictionary(
+                    timed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
                   let placements = AgendaLayout.placements(
                     timed.map { AgendaSpan(id: $0.id, start: $0.start, end: $0.end) }, day: day)
                   ForEach(placements) { placement in
-                    if let entry = timed.first(where: { $0.id == placement.id }) {
+                    if let entry = timedByID[placement.id] {
                       let width = space.size.width / CGFloat(placement.columns)
                       eventCard(entry, compact: (placement.end - placement.start) < 35)
                         .frame(

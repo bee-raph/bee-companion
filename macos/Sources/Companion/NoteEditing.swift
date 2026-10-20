@@ -107,35 +107,25 @@ import UniformTypeIdentifiers
     let panel = NSOpenPanel()
     panel.allowedContentTypes = [.image]
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    do {
-      let access = url.startAccessingSecurityScopedResource()
-      defer { if access { url.stopAccessingSecurityScopedResource() } }
-      let data = try Data(contentsOf: url)
-      guard data.count <= 20_000_000, let source = NSImage(data: data), source.size.width > 0 else {
-        throw CompanionError.message("Choose an image smaller than 20 MB.")
-      }
-      let factor = min(1, 1200 / max(source.size.width, source.size.height))
-      let image = NSImage(
-        size: NSSize(width: source.size.width * factor, height: source.size.height * factor))
-      image.lockFocus()
-      source.draw(in: NSRect(origin: .zero, size: image.size))
-      image.unlockFocus()
-      guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
-        let png = bitmap.representation(using: .png, properties: [:])
-      else { return }
-      if rich {
-        let wrapper = FileWrapper(regularFileWithContents: png)
-        wrapper.preferredFilename = "image.png"
-        let attachment = NSTextAttachment(fileWrapper: wrapper)
-        view.insertText(
-          NSAttributedString(attachment: attachment), replacementRange: view.selectedRange())
-      } else {
-        view.insertText(
-          "\n![image](data:image/png;base64," + png.base64EncodedString() + ")\n",
-          replacementRange: view.selectedRange())
-      }
-    } catch { NSAlert(error: error).runModal() }
+    Task { [weak self, weak view] in
+      do {
+        let png = try await BackgroundWork.run { try NoteImageWork.prepare(url) }
+        guard let self, let view, self.view === view, view.window != nil else { return }
+        if self.rich {
+          let wrapper = FileWrapper(regularFileWithContents: png)
+          wrapper.preferredFilename = "image.png"
+          view.insertText(
+            NSAttributedString(attachment: NSTextAttachment(fileWrapper: wrapper)),
+            replacementRange: view.selectedRange())
+        } else {
+          view.insertText(
+            "\n![image](data:image/png;base64," + png.base64EncodedString() + ")\n",
+            replacementRange: view.selectedRange())
+        }
+      } catch { NSAlert(error: error).runModal() }
+    }
   }
+
 }
 
 enum NoteFormatting {
@@ -187,6 +177,56 @@ struct NoteToolbar: View {
   func tool(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
     Button(action: action) { Image(systemName: symbol).frame(width: 23, height: 20) }
       .help(L10n.text(title)).accessibilityLabel(L10n.text(title))
+  }
+}
+
+final class LoadedNoteDocument: @unchecked Sendable {
+  let document: NSAttributedString
+  init(_ contact: Item) {
+    if let rich = NoteDocument.decode(
+      rtf: contact.body["rtf"] ?? "", rtfd: contact.body["rtfd"] ?? "")
+    {
+      document = rich
+    } else if contact.kind == "notes", contact.body["format"] != "rtf" {
+      document = NoteMarkdown.importText(contact.body["text"] ?? "")
+    } else {
+      document = NSAttributedString(string: contact.body["text"] ?? contact.body["notes"] ?? "")
+    }
+  }
+
+  static func load(_ contact: Item) async -> LoadedNoteDocument {
+    await withCheckedContinuation { continuation in
+      NoteSnapshot.queue.async {
+        continuation.resume(returning: LoadedNoteDocument(contact))
+      }
+    }
+  }
+}
+
+struct LoadedNoteEditor: View {
+  let item: Item
+  let editor: NoteEditing
+  let commit: (String, String, String) -> Void
+  @State private var loaded: LoadedNoteDocument?
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      if let loaded {
+        NoteToolbar(editor: editor)
+        NoteTextEditor(
+          text: .constant(item.body["text"] ?? item.body["notes"] ?? ""),
+          rtf: .constant(item.body["rtf"] ?? ""), rtfd: .constant(item.body["rtfd"] ?? ""),
+          rich: true, editor: editor, commit: commit, initialDocument: loaded.document
+        )
+        .frame(minHeight: 360)
+      } else {
+        ProgressView(L10n.text("Loading note…")).frame(maxWidth: .infinity, minHeight: 360)
+      }
+    }
+    .task(id: item.id) {
+      let result = await LoadedNoteDocument.load(item)
+      guard !Task.isCancelled else { return }
+      loaded = result
+    }
   }
 }
 
@@ -313,7 +353,8 @@ enum NoteDocument {
     {
       return value
     }
-    return Data(base64Encoded: rtf).flatMap { NSAttributedString(rtf: $0, documentAttributes: nil) }
+    guard let data = Data(base64Encoded: rtf), !data.isEmpty else { return nil }
+    return NSAttributedString(rtf: data, documentAttributes: nil)
   }
 }
 

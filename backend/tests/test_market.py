@@ -37,3 +37,25 @@ def test_limit_and_duplicate_symbols(monkeypatch):
     assert len(market.quotes("AAPL,AAPL")["quotes"]) == 1
     with pytest.raises(HTTPException):
         market.quotes(",".join(str(i) for i in range(31)))
+
+
+def test_empty_search_does_not_contact_provider(monkeypatch):
+    def unexpected(*args):
+        raise AssertionError("Empty searches must not load the catalog")
+
+    monkeypatch.setattr(market, "cached", unexpected)
+    assert market.search("   ") == {"instruments": []}
+
+
+def test_quotes_fetch_independent_symbols_concurrently_and_keep_order(monkeypatch):
+    import threading
+
+    barrier = threading.Barrier(4)
+
+    def quote(symbol):
+        barrier.wait(timeout=2)
+        return {"symbol": symbol}
+
+    monkeypatch.setattr(market, "cached", lambda key, ttl, fn: fn())
+    monkeypatch.setattr(market, "quote", quote)
+    assert market.quotes("A,B,C,D")["quotes"] == [{"symbol": name} for name in "ABCD"]

@@ -1,6 +1,15 @@
 import os, uuid
 from pathlib import Path
-from sqlalchemy import create_engine, Column, String, Integer, Text, Float, Boolean
+from sqlalchemy import (
+    create_engine,
+    Column,
+    String,
+    Integer,
+    Text,
+    Float,
+    Boolean,
+    Index,
+)
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
@@ -38,6 +47,7 @@ class Owner(Base):
 
 class Token(Base):
     __tablename__ = "sessions"
+    __table_args__ = (Index("ix_sessions_family", "family"),)
     hash = Column(String, primary_key=True)
     family = Column(String, nullable=False)
     kind = Column(String, nullable=False)
@@ -77,6 +87,7 @@ class Upload(Base):
 
 class Version(Base):
     __tablename__ = "file_versions"
+    __table_args__ = (Index("ix_file_versions_file_created", "file_id", "created"),)
     id = Column(String, primary_key=True)
     file_id = Column(String, nullable=False)
     checksum = Column(String, nullable=False)
@@ -86,6 +97,7 @@ class Version(Base):
 
 class Job(Base):
     __tablename__ = "jobs"
+    __table_args__ = (Index("ix_jobs_due", "due"), Index("ix_jobs_kind", "kind"))
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     kind = Column(String, nullable=False)
     due = Column(Float, nullable=False)

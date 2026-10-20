@@ -22,7 +22,7 @@ enum CompanionError: LocalizedError {
     return nil
   }
 }
-struct Item: Identifiable, Codable, Equatable {
+struct Item: Identifiable, Codable, Equatable, Sendable {
   var id: String = UUID().uuidString.lowercased()
   var kind: String
   var revision: Int = 0
@@ -30,9 +30,9 @@ struct Item: Identifiable, Codable, Equatable {
   var deleted = false
   var title: String { body["title"] ?? "Untitled" }
   var archived: Bool { body["archived"] == "true" || (kind == "tasks" && body["status"] == "Done") }
-  var date: Date? { body["date"].flatMap { ISO8601DateFormatter().date(from: $0) } }
+  var date: Date? { body["date"].flatMap { ItemTimestamp.date($0) } }
 }
-struct Mutation: Codable {
+struct Mutation: Codable, Sendable {
   var operationID: String = UUID().uuidString.lowercased()
   var id: String
   var kind: String
@@ -48,8 +48,8 @@ struct Mutation: Codable {
   }
 }
 struct PushRequest: Codable { var mutations: [Mutation] }
-struct PushResult: Codable {
-  struct Result: Codable {
+struct PushResult: Codable, Sendable {
+  struct Result: Codable, Sendable {
     var operationID: String
     var status: String
     var record: Item?
@@ -57,7 +57,7 @@ struct PushResult: Codable {
   }
   var results: [Result]
 }
-struct PullResult: Codable {
+struct PullResult: Codable, Sendable {
   var changes: [Item]
   var cursor: Int
   var hasMore: Bool
@@ -70,7 +70,7 @@ struct RemoteInstance: Codable {
   var instanceID: String
   var apiVersion: Int
 }
-struct Conflict: Identifiable {
+struct Conflict: Identifiable, Sendable {
   var id: String
   var local: Item
   var server: Item?
@@ -97,7 +97,9 @@ enum Section: String, CaseIterable, Identifiable {
   case rss = "RSS Reader"
   case archive = "Archive"
   case settings = "Settings"
-  static let workspace: [Section] = [.today, .tasks, .notes, .files, .crm, .agenda, .alarms, .stocks, .rss]
+  static let workspace: [Section] = [
+    .today, .tasks, .notes, .files, .crm, .agenda, .alarms, .stocks, .rss,
+  ]
   var id: String { rawValue }
   func title(language: AppLanguage? = nil) -> String { L10n.text(rawValue, language: language) }
   var symbol: String {

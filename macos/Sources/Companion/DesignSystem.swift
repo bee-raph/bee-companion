@@ -82,9 +82,7 @@ struct BeeEmptyState: View {
 
 enum BeeDisplayTime {
   static func timestamp(_ value: String) -> String {
-    let fractional = ISO8601DateFormatter()
-    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let date = fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value) {
+    if let date = ItemTimestamp.date(value) {
       return date.formatted(
         .dateTime.year().month(.abbreviated).day().hour().minute().locale(L10n.locale))
     }

@@ -27,6 +27,14 @@ Each deployment has exactly one owner. There is no public registration, collabor
 - **Shabbat mode:** activate with the button on Today or the toolbar, **⌘⇧S**, or **View → Open Shabbat Mode**. A separate full-screen display shows upcoming zmanim, local weather, up to six selected instruments, and the latest ten headlines per feed simultaneously. Refresh is configurable from one minute to one hour. The display stays awake and updates without mouse input. **Esc** closes it. Activation is on demand.
 - **Languages and native controls:** English (default), Hebrew, French, Russian, and Spanish under **Settings → Language**, including Hebrew right-to-left layout. User content retains its original language. Native selection, alternating rows, **+ / −** controls, keyboard shortcuts, drag and drop, light/dark appearance, and macOS sharing are supported. WhatsApp and LocalSend use user-controlled compose/transfer flows.
 
+## Responsiveness
+
+Rich notes decode in the background in both Notes and CRM. Note import/export, image preparation, file copies, working-file checks, cached feed/weather reads, and periodic sync database processing run outside the UI thread. Search runs after a short typing pause. Calendar fetching uses a dedicated background actor and returns immutable snapshots; stale requests cannot replace the selected date’s results. Date parsing and file icons reuse bounded caches. Notification rescheduling coalesces rapid changes.
+
+Uploads read at most 4 MiB per chunk. Downloads stream to temporary files, and checksums read 1 MiB at a time before publishing a verified local copy. Existing working edits are preserved. Local edits are saved durably before synchronization.
+
+The backend coalesces duplicate provider fetches, fetches up to four independent stock quotes concurrently, and performs upload disk writes outside its event loop. Upload checksum verification runs outside the synchronization lock. Backup hashing and compression run after the database snapshot is secured, without holding that lock. Database indexes support session rotation, file version lookup, scheduled jobs, and the local outbox. Orphan-file cleanup runs hourly; backup scheduling is checked every 30 seconds. `scripts/companionctl upgrade` backs up data, builds the backend, applies migrations, and restarts services.
+
 ## Get started
 
 ### 1. Prerequisites and source
@@ -189,6 +197,14 @@ Bee Companion הוא **כלי עזר מקורי ל־macOS למשתמש יחיד*
 - **RSS:** עד שלוש הזנות RSS/Atom ציבוריות עם שם וכתובת בהגדרות. הוספה ועריכה פותחות חלונית ניתנת לעריכה. כתבות כוללות תאריך פרסום, תקציר טקסט, קריאה שמורה ללא חיבור וקישור למקור. ההורדות מוגבלות, ישויות XML חסומות ויעדי רשת פרטיים נדחים.
 - **מצב שבת:** הפעלה בכפתור במסך היום או בסרגל, **⌘⇧S**, או **View → Open Shabbat Mode**. חלון נפרד במסך מלא מציג יחד זמני יום קרובים, מזג אוויר, עד שש מניות ועשר הכותרות האחרונות מכל הזנה. מרווח הרענון הוא דקה עד שעה. המסך נשאר ער ומתעדכן ללא עכבר. **Esc** סוגר אותו. ההפעלה היא לפי דרישה.
 - **שפות ובקרות מקוריות:** אנגלית כברירת מחדל, עברית, צרפתית, רוסית וספרדית ב־**הגדרות ← שפה**, כולל ממשק עברי מימין לשמאל. תוכן המשתמש נשאר בשפת המקור. נתמכים בחירה מקורית, שורות מתחלפות, **+ / −**, קיצורי מקשים, גרירה, מראה בהיר/כהה ושיתוף macOS. WhatsApp ו־LocalSend משתמשים בתהליכי שליחה ואישור של המשתמש.
+
+## תגובתיות
+
+הערות עשירות מפוענחות ברקע בהערות וב־CRM. ייבוא וייצוא הערות, הכנת תמונות, העתקת קבצים, בדיקת עותקי עבודה, קריאת מטמון חדשות ומזג אוויר ועיבוד מסד הנתונים בסנכרון תקופתי פועלים מחוץ לתהליכון הממשק. החיפוש פועל לאחר הפסקה קצרה בהקלדה. קריאת לוחות השנה פועלת ברקע ומחזירה תמונות מצב של הנתונים; בקשות ישנות אינן מחליפות את תוצאות התאריך שנבחר. פענוח תאריכים וסמלי קבצים משתמשים במטמון מוגבל, ושינויים מהירים בתזכורות מאוחדים לתזמון התראות אחד.
+
+העלאות נקראות במקטעים של עד 4 MiB. הורדות נכתבות לקובץ זמני וסכומי הביקורת מחושבים במקטעים של 1 MiB לפני פרסום עותק מקומי מאומת. עריכות מקומיות קיימות נשמרות. שינויים נשמרים במסד המקומי לפני סנכרון.
+
+השרת מאחד בקשות כפולות לספקים וטוען עד ארבעה ציטוטי מניות עצמאיים במקביל. כתיבת מקטעי העלאה אינה חוסמת את לולאת האירועים ואימות סכום הביקורת פועל מחוץ לנעילת הסנכרון. חישוב סכומי הביקורת ודחיסת גיבויים פועלים אחרי אבטחת תמונת המצב של מסד הנתונים, ללא החזקת אותה נעילה. אינדקסים תומכים בהחלפת סשנים, חיפוש גרסאות קבצים, משימות מתוזמנות ותור הסנכרון המקומי. ניקוי קבצים יתומים פועל מדי שעה, ותזמון גיבויים נבדק מדי 30 שניות. הפקודה `scripts/companionctl upgrade` מגבה נתונים, בונה את השרת, מחילה הגירות ומפעילה מחדש את השירותים.
 
 ## תחילת עבודה
 

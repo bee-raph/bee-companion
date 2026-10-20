@@ -28,18 +28,21 @@ def retain():
 
 def cleanup():
     root = Path(os.getenv("FILES_ROOT", "/files"))
+    cutoff = time.time() - 86400
+    candidates = [
+        path
+        for path in root.iterdir()
+        if path.is_file() and path.stat().st_mtime < cutoff
+    ]
+    if not candidates:
+        return
     with Session.begin() as db:
         if engine.dialect.name == "postgresql":
             db.execute(text("SELECT pg_advisory_xact_lock(731927)"))
         referenced = set(db.scalars(select(Version.id)))
         active = set(db.scalars(select(Upload.id).where(Upload.complete == False)))
-        for path in root.iterdir():
-            if (
-                path.is_file()
-                and path.name not in referenced
-                and path.stem not in active
-                and path.stat().st_mtime < time.time() - 86400
-            ):
+        for path in candidates:
+            if path.name not in referenced and path.stem not in active:
                 path.unlink()
 
 
@@ -68,10 +71,13 @@ def run_once():
 
 
 if __name__ == "__main__":
+    next_cleanup = 0
     while True:
         try:
             run_once()
-            cleanup()
+            if time.monotonic() >= next_cleanup:
+                cleanup()
+                next_cleanup = time.monotonic() + 3600
         except Exception:
             logging.exception("Worker iteration failed")
         time.sleep(30)

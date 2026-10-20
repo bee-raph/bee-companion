@@ -18,6 +18,7 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from .db import Cache, Record, Session
+from .concurrency import singleflight
 
 
 def valid_url(value):
@@ -217,6 +218,7 @@ def parse_feed(data, url):
     return sorted(unique.values(), key=lambda x: x["published"], reverse=True)
 
 
+@singleflight(lambda feed, interval: "rss:" + feed["url"])
 def load_feed(feed, interval):
     key = "rss:" + hashlib.sha256(feed["url"].encode()).hexdigest()
     with Session() as db:
@@ -272,6 +274,10 @@ def feeds():
         return {"feeds": [future.result() for future in futures]}
 
 
+@singleflight(
+    lambda latitude, longitude, zone: "weather:"
+    + json.dumps([latitude, longitude, zone])
+)
 def weather(latitude, longitude, zone):
     if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
         raise HTTPException(422, "Invalid coordinates")

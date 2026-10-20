@@ -1,4 +1,4 @@
-import argparse, getpass, hashlib, json, os, shutil, subprocess, tarfile, tempfile, time
+import argparse, fcntl, getpass, hashlib, json, os, shutil, subprocess, tarfile, tempfile, time
 from pathlib import Path
 from sqlalchemy import select, text, delete
 from argon2 import PasswordHasher
@@ -19,32 +19,41 @@ def pg_env():
 def backup():
     destination = Path(os.getenv("BACKUPS_ROOT", "./backups"))
     destination.mkdir(parents=True, exist_ok=True)
-    with Session.begin() as db:
-        if engine.dialect.name == "postgresql":
-            db.execute(text("SELECT pg_advisory_xact_lock(731927)"))
+    # Backup jobs serialize separately from record and upload mutations.
+    with (destination / ".backup.lock").open("a") as backup_lock:
+        fcntl.flock(backup_lock, fcntl.LOCK_EX)
         with tempfile.TemporaryDirectory(dir=destination) as temporary:
             work = Path(temporary)
             objects = work / "objects"
             objects.mkdir()
-            subprocess.run(
-                ["pg_dump", "-Fc", "-f", str(work / "database.dump")],
-                env=pg_env(),
-                check=True,
-            )
             manifest = {
                 "schemaVersion": 1,
                 "instanceID": os.getenv("INSTANCE_ID"),
                 "created": time.time(),
                 "files": {},
             }
-            for version in db.scalars(select(Version)):
-                source = Path(os.getenv("FILES_ROOT", "./files")) / version.id
-                with source.open("rb") as stream:
+            with Session.begin() as db:
+                if engine.dialect.name == "postgresql":
+                    db.execute(text("SELECT pg_advisory_xact_lock(731927)"))
+                subprocess.run(
+                    ["pg_dump", "-Fc", "-f", str(work / "database.dump")],
+                    env=pg_env(),
+                    check=True,
+                )
+                for version in db.scalars(select(Version)):
+                    source = Path(os.getenv("FILES_ROOT", "./files")) / version.id
+                    target = objects / version.id
+                    try:
+                        os.link(source, target)
+                    except OSError:
+                        shutil.copyfile(source, target)
+                    manifest["files"][version.id] = version.checksum
+            # Pinned immutable objects remain available if orphan cleanup unlinks their originals.
+            for ident, expected in manifest["files"].items():
+                with (objects / ident).open("rb") as stream:
                     checksum = hashlib.file_digest(stream, "sha256").hexdigest()
-                if checksum != version.checksum:
-                    raise RuntimeError("Stored object checksum mismatch: " + version.id)
-                shutil.copyfile(source, objects / version.id)
-                manifest["files"][version.id] = checksum
+                if checksum != expected:
+                    raise RuntimeError("Stored object checksum mismatch: " + ident)
             with (work / "database.dump").open("rb") as stream:
                 manifest["databaseChecksum"] = hashlib.file_digest(
                     stream, "sha256"

@@ -561,3 +561,161 @@ def test_crm_rejects_dangling_references_and_bad_dates(client):
         ).status_code
         == 422
     )
+
+
+def test_upload_chunk_keeps_event_loop_responsive(client, monkeypatch):
+    import asyncio
+    import threading
+    import time
+    import httpx
+    from app import main
+
+    h = headers(client)
+    data = b"upload data"
+    upload = client.post(
+        "/api/v1/files/uploads",
+        headers=h,
+        json={
+            "fileID": str(uuid.uuid4()),
+            "size": len(data),
+            "checksum": hashlib.sha256(data).hexdigest(),
+        },
+    ).json()
+    entered = threading.Event()
+    release = threading.Event()
+    original = main.store_upload_chunk
+
+    def slow_write(*args):
+        entered.set()
+        assert release.wait(3), "Upload blocked the event loop"
+        return original(*args)
+
+    monkeypatch.setattr(main, "store_upload_chunk", slow_write)
+
+    async def exercise():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as async_client:
+            task = asyncio.create_task(
+                async_client.put(
+                    f"/api/v1/files/uploads/{upload['id']}?offset=0",
+                    headers=h,
+                    content=data,
+                )
+            )
+            try:
+                assert await asyncio.to_thread(entered.wait, 2)
+                start = time.monotonic()
+                response = await asyncio.wait_for(async_client.get("/health/live"), 1)
+                assert response.status_code == 200
+                assert time.monotonic() - start < 1
+            finally:
+                release.set()
+            assert (await task).status_code == 200
+
+    asyncio.run(exercise())
+
+
+def test_provider_cache_coalesces_duplicate_requests(client):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    from app import market
+
+    calls = []
+    gate = threading.Barrier(6)
+
+    def fetch():
+        calls.append(True)
+        return {"price": 123}
+
+    def load():
+        gate.wait(timeout=3)
+        return market.cached("test:duplicate", 60, fetch)
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(lambda _: load(), range(6)))
+    assert results == [{"price": 123}] * 6
+    assert len(calls) == 1
+
+
+def test_unrelated_provider_keys_do_not_wait_for_network_fetch(client):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    from app import market
+
+    first_started = threading.Event()
+    second_started = threading.Event()
+
+    def first_fetch():
+        first_started.set()
+        assert second_started.wait(2), "Unrelated provider request was serialized"
+        return {"key": "first"}
+
+    def second_fetch():
+        second_started.set()
+        return {"key": "second"}
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(market.cached, "test:first", 60, first_fetch)
+        assert first_started.wait(2)
+        second = executor.submit(market.cached, "test:second", 60, second_fetch)
+        assert first.result(timeout=3) == {"key": "first"}
+        assert second.result(timeout=3) == {"key": "second"}
+
+
+def test_query_indexes_exist(client):
+    from sqlalchemy import inspect
+
+    indexes = inspect(engine)
+    assert "ix_sessions_family" in {
+        index["name"] for index in indexes.get_indexes("sessions")
+    }
+    assert "ix_file_versions_file_created" in {
+        index["name"] for index in indexes.get_indexes("file_versions")
+    }
+    assert {"ix_jobs_due", "ix_jobs_kind"} <= {
+        index["name"] for index in indexes.get_indexes("jobs")
+    }
+
+
+def test_backup_pins_files_and_verifies_archive_after_snapshot(
+    client, tmp_path, monkeypatch
+):
+    import tarfile
+    from app import maintenance
+    from app.db import Version
+
+    backups = tmp_path / "backups"
+    files = tmp_path / "files"
+    files.mkdir()
+    ident = str(uuid.uuid4())
+    data = b"immutable version bytes"
+    (files / ident).write_bytes(data)
+    checksum = hashlib.sha256(data).hexdigest()
+    with Session.begin() as db:
+        db.add(
+            Version(
+                id=ident,
+                file_id=str(uuid.uuid4()),
+                checksum=checksum,
+                size=len(data),
+                created=0,
+            )
+        )
+    monkeypatch.setenv("BACKUPS_ROOT", str(backups))
+    monkeypatch.setenv("FILES_ROOT", str(files))
+
+    def dump(command, **kwargs):
+        Path(command[-1]).write_bytes(b"database snapshot")
+
+    monkeypatch.setattr(maintenance.subprocess, "run", dump)
+    archive = maintenance.backup()
+    with tarfile.open(archive) as stored:
+        manifest = json.load(stored.extractfile("manifest.json"))
+        assert manifest["files"] == {ident: checksum}
+        assert stored.extractfile("objects/" + ident).read() == data
+        assert (
+            manifest["databaseChecksum"]
+            == hashlib.sha256(b"database snapshot").hexdigest()
+        )
+    assert not list(backups.glob("*.partial"))

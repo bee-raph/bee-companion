@@ -1,7 +1,8 @@
 import Foundation
 import GRDB
 
-final class LocalStore {
+/// GRDB serializes every read and write on its database queue.
+final class LocalStore: @unchecked Sendable {
   let db: DatabaseQueue
   init(url: URL) throws {
     db = try DatabaseQueue(path: url.path)
@@ -22,6 +23,16 @@ final class LocalStore {
     migrations.registerMigration("v2-outbox") { db in
       try db.execute(sql: "ALTER TABLE outbox ADD COLUMN sent INTEGER NOT NULL DEFAULT 0")
     }
+    migrations.registerMigration("v3-query-indexes") { db in
+      try db.execute(sql: "CREATE INDEX outbox_record_sequence ON outbox(id, sequence)")
+    }
+    migrations.registerMigration("v4-record-revisions") { db in
+      try db.execute(sql: "ALTER TABLE items ADD COLUMN revision INTEGER NOT NULL DEFAULT 0")
+      try db.execute(
+        sql:
+          "UPDATE items SET revision=COALESCE(json_extract(CAST(payload AS TEXT), '$.revision'), 0)"
+      )
+    }
     try migrations.migrate(db)
   }
   func all() throws -> [Item] {
@@ -33,8 +44,8 @@ final class LocalStore {
   }
   static func put(_ item: Item, db: Database) throws {
     try db.execute(
-      sql: "INSERT OR REPLACE INTO items VALUES (?, ?, ?)",
-      arguments: [item.id, item.kind, try JSONEncoder().encode(item)])
+      sql: "INSERT OR REPLACE INTO items(id,kind,payload,revision) VALUES (?, ?, ?, ?)",
+      arguments: [item.id, item.kind, try JSONEncoder().encode(item), item.revision])
     try db.execute(sql: "DELETE FROM search WHERE id=?", arguments: [item.id])
     if !item.deleted {
       try db.execute(
@@ -45,10 +56,10 @@ final class LocalStore {
   func save(_ input: Item) throws {
     try db.write { db in
       var item = input
-      if let saved = try Data.fetchOne(
-        db, sql: "SELECT payload FROM items WHERE id=?", arguments: [item.id])
+      if let revision = try Int.fetchOne(
+        db, sql: "SELECT revision FROM items WHERE id=?", arguments: [item.id])
       {
-        item.revision = try JSONDecoder().decode(Item.self, from: saved).revision
+        item.revision = revision
       }
       try Self.put(item, db: db)
       // Preserve mutations already sent; coalesce only drafts that never left this device.
@@ -111,6 +122,13 @@ final class LocalStore {
         if later.isEmpty {
           try Self.put(record, db: db)
         } else {
+          if let payload = try Data.fetchOne(
+            db, sql: "SELECT payload FROM items WHERE id=?", arguments: [record.id])
+          {
+            var local = try JSONDecoder().decode(Item.self, from: payload)
+            local.revision = record.revision
+            try Self.put(local, db: db)
+          }
           var revision = record.revision
           for row in later {
             var m = try JSONDecoder().decode(Mutation.self, from: row["payload"] as Data)

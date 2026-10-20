@@ -14,11 +14,8 @@ struct ZmanimEntry: Identifiable, Equatable {
     return L10n.text(labels[id] ?? (spaced.prefix(1).uppercased() + spaced.dropFirst()))
   }
   static func sorted(_ times: [String: String]) -> [ZmanimEntry] {
-    let fractional = ISO8601DateFormatter()
-    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    let standard = ISO8601DateFormatter()
     return times.compactMap { key, value in
-      (fractional.date(from: value) ?? standard.date(from: value)).map {
+      ItemTimestamp.date(value).map {
         ZmanimEntry(id: key, date: $0)
       }
     }.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date < $1.date }
