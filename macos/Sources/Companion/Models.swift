@@ -29,7 +29,7 @@ struct Item: Identifiable, Codable, Equatable {
   var body: [String: String] = [:]
   var deleted = false
   var title: String { body["title"] ?? "Untitled" }
-  var archived: Bool { body["archived"] == "true" }
+  var archived: Bool { body["archived"] == "true" || (kind == "tasks" && body["status"] == "Done") }
   var date: Date? { body["date"].flatMap { ISO8601DateFormatter().date(from: $0) } }
 }
 struct Mutation: Codable {

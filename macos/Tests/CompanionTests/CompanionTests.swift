@@ -647,3 +647,60 @@ final class AgendaLayoutTests: XCTestCase {
     XCTAssertEqual(result.first?.end, 600)
   }
 }
+
+final class TaskArchiveTests: XCTestCase {
+  func testCompletingMovesTaskToArchiveAndReopeningReturnsItToActive() throws {
+    let task = Item(kind: "tasks", body: ["title": "Work", "status": "To do"])
+    let done = TaskCompletion.toggled(task)
+    XCTAssertEqual(done.body["status"], "Done")
+    XCTAssertEqual(done.body["archived"], "true")
+    XCTAssertFalse(WorkListScope(kind: "tasks").contains(done))
+    XCTAssertTrue(WorkListScope(kind: "tasks", archived: true).contains(done))
+    let reopened = TaskCompletion.toggled(done)
+    XCTAssertEqual(reopened.body["status"], "To do")
+    XCTAssertEqual(reopened.body["archived"], "false")
+    XCTAssertTrue(WorkListScope(kind: "tasks").contains(reopened))
+    let store = try LocalStore(
+      url: FileManager.default.temporaryDirectory.appendingPathComponent(
+        UUID().uuidString + ".sqlite"))
+    try store.save(done)
+    XCTAssertEqual(try store.pending().first?.body["archived"], "true")
+    XCTAssertTrue(try XCTUnwrap(store.all().first).archived)
+  }
+  func testStatusPickerAndLegacyCompletedTasksUseSameArchiveRules() {
+    let legacy = Item(kind: "tasks", body: ["status": "Done", "archived": "false"])
+    XCTAssertTrue(legacy.archived)
+    XCTAssertTrue(WorkListScope(kind: "tasks", archived: true).contains(legacy))
+    XCTAssertEqual(TaskCompletion.normalized(legacy, previous: nil).body["archived"], "true")
+    var reopened = legacy
+    reopened.body["status"] = "In progress"
+    XCTAssertFalse(TaskCompletion.normalized(reopened, previous: legacy).archived)
+    let note = Item(kind: "notes", body: ["status": "Done"])
+    XCTAssertFalse(note.archived)
+    XCTAssertEqual(TaskCompletion.normalized(note, previous: nil), note)
+  }
+}
+
+final class SyncedPreferencesTests: XCTestCase {
+  func testCalendarSettingsSurviveOfflineStorageAndIncomingPull() throws {
+    let local = try LocalStore(
+      url: FileManager.default.temporaryDirectory.appendingPathComponent(
+        UUID().uuidString + ".sqlite"))
+    var settings = Item(
+      id: "00000000-0000-0000-0000-000000000001", kind: "user_settings",
+      body: ["language": "he", "selectedCalendars": "[\"work\"]", "agendaRange": "Week"])
+    try local.save(settings)
+    let mutation = try XCTUnwrap(local.nextMutation())
+    XCTAssertEqual(mutation.body["selectedCalendars"], "[\"work\"]")
+    settings.revision = 1
+    try local.accept(.init(operationID: mutation.operationID, status: "applied", record: settings))
+    settings.body["agendaRange"] = "Month"
+    settings.body["selectedCalendars"] = "[]"
+    settings.revision = 2
+    try local.apply(.init(changes: [settings], cursor: 2, hasMore: false))
+    let stored = try XCTUnwrap(local.all().first)
+    XCTAssertEqual(stored.body["agendaRange"], "Month")
+    XCTAssertEqual(stored.body["selectedCalendars"], "[]")
+    XCTAssertEqual(try local.pendingCount(), 0)
+  }
+}

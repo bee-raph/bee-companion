@@ -219,13 +219,15 @@ struct ItemListView: View {
   var archived = false
   @State var selected: String?
   @State var filter = "All"
+  @State private var taskTab = "Active"
+  private var showsArchived: Bool { archived || (kind == "tasks" && taskTab == "Archived") }
   var rows: [Item] {
     let ids = query.isEmpty ? nil : (try? model.store.search(query))
     return model.items.filter { item in
-      guard WorkListScope(kind: kind, archived: archived).contains(item),
+      guard WorkListScope(kind: kind, archived: showsArchived).contains(item),
         ids == nil || ids!.contains(item.id)
       else { return false }
-      if kind == "tasks", filter != "All" {
+      if kind == "tasks", !showsArchived, filter != "All" {
         guard let date = item.date else { return false }
         if filter == "Today" { return Calendar.current.isDateInToday(date) }
         if filter == "Upcoming" { return date > Date() }
@@ -241,6 +243,20 @@ struct ItemListView: View {
     HSplitView {
       VStack(spacing: 0) {
         if kind == "tasks" {
+          Picker(
+            L10n.text("Tasks"),
+            selection: Binding(
+              get: { taskTab },
+              set: {
+                taskTab = $0
+                selected = nil
+              })
+          ) {
+            Text(L10n.text("Active")).tag("Active")
+            Text(L10n.text("Archived")).tag("Archived")
+          }.pickerStyle(.segmented).padding(8)
+        }
+        if kind == "tasks", !showsArchived {
           Picker(L10n.text("View"), selection: $filter) {
             ForEach(["All", "Today", "Upcoming", "Overdue"], id: \.self) {
               Text(L10n.text($0)).tag($0)
@@ -281,7 +297,12 @@ struct ItemListView: View {
           addTitle: kind == "tasks" ? "Add task" : kind == "notes" ? "Add note" : "Add alarm",
           removeTitle: "Trash", canAdd: kind != nil,
           canRemove: rows.contains { $0.id == selected },
-          add: { if let kind { selected = model.add(kind).id } },
+          add: {
+            if let kind {
+              taskTab = "Active"
+              selected = model.add(kind).id
+            }
+          },
           remove: {
             guard let item = rows.first(where: { $0.id == selected }) else { return }
             if model.trash(item) { selected = nil }
@@ -404,7 +425,11 @@ struct ItemEditor: View {
           Button(L10n.text("WhatsApp")) { Sharing.whatsApp(item) }
           Spacer()
           Button(L10n.text(item.archived ? "Restore" : "Archive")) {
-            item.body["archived"] = String(!item.archived)
+            let restoring = item.archived
+            item.body["archived"] = String(!restoring)
+            if restoring && item.kind == "tasks" && item.body["status"] == "Done" {
+              item.body["status"] = "To do"
+            }
           }
           Button(L10n.text("Trash"), role: .destructive) { model.trash(item) }
         }

@@ -311,3 +311,70 @@ def test_unsupported_language_rejected(client):
         client.post("/api/v1/sync/push", headers=h, json={"mutations": [m]}).status_code
         == 422
     )
+
+
+def test_all_content_and_complete_settings_persist_in_backend(client):
+    from app.main import KINDS
+    from app.db import Record
+
+    h = headers(client)
+    settings = {
+        "language": "he",
+        "clocks": "Asia/Jerusalem,Europe/Paris,America/New_York",
+        "city": "Jerusalem",
+        "latitude": "31.78",
+        "longitude": "35.23",
+        "timezone": "Asia/Jerusalem",
+        "israel": "true",
+        "rssFeeds": json.dumps(
+            [{"id": "news", "title": "News", "url": "https://example.com/feed"}]
+        ),
+        "shabbatRefreshSeconds": "300",
+        "shabbatStocks": '["stock-id"]',
+        "selectedCalendars": '["work-calendar", "home-calendar"]',
+        "agendaRange": "Week",
+    }
+    mutations = []
+    for kind in sorted(KINDS):
+        body = (
+            settings
+            if kind == "user_settings"
+            else {
+                "title": "Test content",
+                "description": "שלום",
+                "text": "Full body",
+                "status": "Done" if kind == "tasks" else "To do",
+                "archived": "true" if kind == "tasks" else "false",
+            }
+        )
+        if kind == "notes":
+            body.update(
+                {
+                    "format": "rtf",
+                    "rtf": "e1xydGYxIEhlbGxvfQ==",
+                    "rtfd": "opaque-image-bearing-data",
+                }
+            )
+        if kind.endswith("_attachments"):
+            body.update({"ownerID": str(uuid.uuid4()), "fileID": str(uuid.uuid4())})
+        mutations.append(mutation(kind=kind, body=body))
+    response = client.post(
+        "/api/v1/sync/push", headers=h, json={"mutations": mutations}
+    )
+    assert response.status_code == 200
+    assert all(result["status"] == "applied" for result in response.json()["results"])
+    # Verify database persistence independently of the push response.
+    with Session() as db:
+        for change in mutations:
+            saved = db.get(Record, change["id"])
+            assert saved is not None
+            assert saved.kind == change["kind"]
+            assert json.loads(saved.body) == change["body"]
+    assert client.post("/api/v1/auth/logout", headers=h).status_code == 200
+    h = headers(client)
+    changes = client.get("/api/v1/sync/pull", headers=h).json()["changes"]
+    assert {change["kind"] for change in changes} == KINDS
+    assert (
+        next(change["body"] for change in changes if change["kind"] == "user_settings")
+        == settings
+    )

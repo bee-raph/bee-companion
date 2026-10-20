@@ -19,7 +19,7 @@ Choose **Settings → Language**: English (default), Hebrew, French, Russian, or
 Lists and tables use native macOS selection, alternating rows, and compact **+ / −** controls below the collection. Select an item to enable removal. Tasks, notes, alarms, and library files move to Trash; removing a feed or followed instrument removes it from that list. In Files, **+** imports files and **New folder** creates a folder; in Stocks, **+** focuses instrument search.
 
 - **Today:** a dashboard of tasks, upcoming reminders, three world clocks, the Hebrew calendar, zmanim, and followed instruments. The dashboard expands across the available window width, including when maximized. Clocks and displayed timestamps omit seconds. The zmanim strip advances independently to the next upcoming time.
-- **Tasks:** title, description, due date or date/time, To do/In progress/Done/Cancelled status, independent archive state, file attachments, linked reminders, TXT/RTF export, and sharing.
+- **Tasks:** title, description, due date or date/time, To do/In progress/Done/Cancelled status, automatic archiving on completion, Active/Archived tabs, file attachments, linked reminders, TXT/RTF export, and sharing.
 - **Files:** an app-owned folder hierarchy with upload/download, resumable transfers, checksums, immutable file versions, rename/move/duplicate, trash/restore, confirmed permanent deletion, offline copies, Quick Look, default-app opening, and detection of externally edited working copies. Moving a file preserves its attachments.
 - **Notes:** native rich-text editing with Markdown import/export, title/description, autosave, full-text search, import/export, and attachments. Markdown export converts supported rich-text formatting.
 - **Alarms:** complete-description popup windows while the app runs, local macOS notification fallback when closed, snooze, missed-occurrence recovery, and one-time/daily/weekday/weekly/monthly recurrence. Recurrence preserves wall-clock time across daylight-saving changes; monthly dates skip months without that day.
@@ -30,7 +30,7 @@ Lists and tables use native macOS selection, alternating rows, and compact **+ /
 
 ### Task icons, file attachments, and agenda
 
-Click a task's circle to mark it Done; click its checkmark to return it to To do. This works in Tasks, Today, and the agenda. In tasks, notes, and reminders, **Attach files…** opens the macOS file picker for any local file, including multiple selections. Files do not need to be imported into Files first. The app keeps a managed copy, records its attachment, and queues it for the usual offline synchronization. Copies and checksums are prepared off the UI thread. Managed copies also appear in Files. Removing an attachment keeps the file itself.
+Click a task's circle to mark it Done and move it to the second **Archived** tab on Tasks. Click its checkmark there, or choose Restore, to return it to To do in the **Active** tab. The status picker follows the same rule. Existing completed tasks also appear in Archived. Completion and archive flags synchronize together. This works in Tasks, Today, and the agenda. In tasks, notes, and reminders, **Attach files…** opens the macOS file picker for any local file, including multiple selections. Files do not need to be imported into Files first. The app keeps a managed copy, records its attachment, and queues it for the usual offline synchronization. Copies and checksums are prepared off the UI thread. Managed copies also appear in Files. Removing an attachment keeps the file itself.
 
 Files use colored, type-specific icons for folders, images, PDF, audio, video, archives, spreadsheets, presentations, code, and other documents.
 
@@ -183,7 +183,7 @@ The Mac's GRDB/SQLite database is the interface's immediate source of truth. Sav
 
 The client pushes revisions and pulls a durable server change cursor on launch, reconnect, manual sync, and periodically while active. The API applies expected-revision checks, stores idempotency receipts, and serializes change-log allocation with a PostgreSQL advisory lock. Pull pages and cursors are committed atomically on the client. If another client changed a record, the app keeps the local draft and server version for explicit resolution in Settings; it does not silently discard note or file edits. Deletion markers and history are retained, so cursors currently do not expire.
 
-Tasks, notes, folders, file metadata, attachment links, reminders, occurrence actions, watchlist, and user preferences synchronize. RSS feed configuration, Shabbat refresh, selected stocks, city coordinates, and Hebrew calendar preferences are part of the synced preferences. Apple appointments, permission decisions, window layout, and local caches remain device-local.
+Tasks, notes, folders, file metadata, attachment links, reminders, occurrence actions, watchlist, and user preferences synchronize. RSS feed configuration, Shabbat refresh, selected stocks, city coordinates, and Hebrew calendar preferences are part of the synced preferences. Calendar-selection preferences and the agenda view mode also synchronize. Every save schedules automatic sync after a short pause; while offline, changes stay in the local outbox and retry on reconnect. Apple appointments, macOS permission decisions, connection configuration, Keychain credentials, window layout, and local caches remain device-local.
 
 Uploads persist their session and confirmed offset on both sides. Content is checksum-verified before becoming an immutable version. Downloads are checksum-checked. A working file modified by another application can be uploaded as a new version. Server file paths use generated identifiers rather than visible folder names.
 
@@ -234,7 +234,7 @@ FILES_ROOT=/tmp/bee-companion-api PYTHONPATH=backend \
   .venv/bin/python scripts/export-openapi.py
 ```
 
-CI runs backend/packaging tests, checks schema drift, and runs native tests. API documentation is available at `http://127.0.0.1:8787/docs`; private endpoints require authentication.
+Verification runs locally: backend/packaging tests, schema-drift checks, and native tests. No GitHub Actions workflows are configured. API documentation is available at `http://127.0.0.1:8787/docs`; private endpoints require authentication.
 
 The backend uses FastAPI, SQLAlchemy/Alembic, PostgreSQL 17, private filesystem storage, and a PostgreSQL-backed worker. Revisioned work entities use a shared `records` envelope with validated kinds and string-valued payloads. Sessions, file versions, uploads, jobs, provider cache, mutation receipts, and change log have dedicated tables. Rich notes store base64 RTF plus extracted text in the note payload. The native stack is SwiftUI/AppKit, GRDB/FTS5, EventKit, UserNotifications, Keychain, and URLSession.
 
@@ -255,7 +255,7 @@ See [release notes](docs/releases.md) and [icon/identity assets](docs/brand-asse
 
 ### סמלי משימות, צירוף קבצים וסדר היום
 
-לחצו על עיגול המשימה כדי לסמן אותה כבוצעה; לחצו על סימן הביקורת כדי להחזיר אותה לביצוע. הפעולה זמינה במשימות, במסך היום ובסדר היום. במשימות, בהערות ובתזכורות, **צירוף קבצים…** פותח את בוחר הקבצים של macOS ומאפשר לבחור כל קובץ מקומי, כולל כמה קבצים יחד, ללא ייבוא מוקדם לספרייה. האפליקציה שומרת עותק מנוהל, מצרפת אותו לרשומה ומוסיפה אותו לתור הסנכרון הרגיל. ההעתקה וחישוב חתימת הקובץ נעשים מחוץ לתהליכון הממשק. העותקים זמינים גם במסך הקבצים. הסרת הצירוף אינה מוחקת את הקובץ.
+לחצו על עיגול המשימה כדי לסמן אותה כבוצעה ולהעביר אותה ללשונית השנייה, **בארכיון**, במסך המשימות. לחצו שם על סימן הביקורת או בחרו שחזור כדי להחזיר אותה לביצוע בלשונית **פעילות**. בורר המצב פועל באותו אופן. גם משימות שהושלמו בעבר מופיעות בארכיון, ומצב הביצוע והארכוב מסתנכרנים יחד. הפעולה זמינה במשימות, במסך היום ובסדר היום. במשימות, בהערות ובתזכורות, **צירוף קבצים…** פותח את בוחר הקבצים של macOS ומאפשר לבחור כל קובץ מקומי, כולל כמה קבצים יחד, ללא ייבוא מוקדם לספרייה. האפליקציה שומרת עותק מנוהל, מצרפת אותו לרשומה ומוסיפה אותו לתור הסנכרון הרגיל. ההעתקה וחישוב חתימת הקובץ נעשים מחוץ לתהליכון הממשק. העותקים זמינים גם במסך הקבצים. הסרת הצירוף אינה מוחקת את הקובץ.
 
 מסך הקבצים מציג סמלים צבעוניים לפי סוג: תיקיות, תמונות, PDF, שמע, וידאו, ארכיונים, גיליונות, מצגות, קוד ומסמכים אחרים.
 
@@ -296,7 +296,7 @@ Bee Companion היא **אפליקציית macOS מקורית למשתמש יחי
 ### מסך היום וכלי עבודה
 
 - **Today — היום:** לוח בקרה עם משימות, תזכורות קרובות, עד שלושה שעונים עולמיים, לוח שנה עברי, זמני היום וניירות ערך במעקב. לוח הבקרה מתפרס על רוחב החלון הזמין, גם כשהחלון מוגדל. השעונים וחותמות הזמן המוצגות אינם כוללים שניות. פס זמני היום נגלל בנפרד אל הזמן הבא שעתיד להתרחש.
-- **Tasks — משימות:** כותרת, תיאור, תאריך יעד או תאריך ושעה, מצבים To do / In progress / Done / Cancelled, ארכוב נפרד ממצב הביצוע, קבצים מצורפים, תזכורות מקושרות, ייצוא TXT/RTF ושיתוף.
+- **Tasks — משימות:** כותרת, תיאור, תאריך יעד או תאריך ושעה, מצבים To do / In progress / Done / Cancelled, ארכוב אוטומטי בסיום ולשוניות פעילות ובארכיון, קבצים מצורפים, תזכורות מקושרות, ייצוא TXT/RTF ושיתוף.
 - **Files — קבצים:** עץ תיקיות בבעלות האפליקציה, העלאה והורדה, חידוש העברות שנקטעו, בדיקת תקינות באמצעות סכומי ביקורת, גרסאות קבצים שאינן נדרסות, שינוי שם, העברה ושכפול, סל מחזור ושחזור, מחיקה סופית לאחר אישור, עותקים מקומיים, Quick Look, פתיחה ביישום ברירת המחדל וזיהוי שינויים בעותקי עבודה שנערכו ביישום חיצוני. העברת קובץ אינה שוברת את הקישורים אליו מתוך משימות או הערות.
 - **Notes — הערות:** עריכת טקסט עשיר מקורית, עם ייבוא וייצוא Markdown; כותרת ותיאור, שמירה אוטומטית, חיפוש בטקסט המלא, ייבוא וייצוא וקבצים מצורפים. ייצוא Markdown ממיר עיצוב טקסט עשיר נתמך.
 - **Alarms — התראות ותזכורות:** חלון המציג את התיאור המלא כשהאפליקציה פועלת, התראות macOS מקומיות כשהיא סגורה, נודניק, שחזור תזכורות שהוחמצו וחזרה חד־פעמית, יומית, בימי שבוע נבחרים, שבועית או חודשית. תזכורות חוזרות שומרות על השעה המקומית במעבר לשעון קיץ או חורף; חזרה חודשית מדלגת על חודשים שבהם התאריך שנבחר אינו קיים.
@@ -440,7 +440,7 @@ scripts/build-macos release
 
 הלקוח דוחף שינויים עם מספרי גרסה ומושך סמן שינויים עמיד מהשרת בהפעלה, בחיבור מחדש, בסנכרון ידני ובאופן מחזורי כשהוא פעיל. ה־API בודק גרסה צפויה, שומר קבלות לפעולות חוזרות ומסדר את הקצאת יומן השינויים בעזרת נעילת advisory של PostgreSQL. דפי שינויים והסמנים שלהם נשמרים אטומית בלקוח. אם לקוח אחר שינה רשומה, האפליקציה שומרת את הטיוטה המקומית ואת גרסת השרת לפתרון מפורש בהגדרות; היא אינה משליכה בשקט עריכות של הערות או קבצים. סימוני מחיקה והיסטוריה נשמרים, ולכן לסמנים אין כרגע תאריך תפוגה.
 
-משימות, הערות, תיקיות, מידע על קבצים, קישורי קבצים מצורפים, תזכורות, פעולות על מופעי תזכורות, רשימת המעקב והעדפות משתמש מסתנכרנים. תצורת RSS, רענון במצב שבת, מניות נבחרות, קואורדינטות העיר והעדפות הלוח העברי הם חלק מההעדפות המסונכרנות. אירועי Apple, החלטות הרשאה, מבנה החלונות ומטמונים מקומיים נשארים על המכשיר.
+משימות, הערות, תיקיות, מידע על קבצים, קישורי קבצים מצורפים, תזכורות, פעולות על מופעי תזכורות, רשימת המעקב והעדפות משתמש מסתנכרנים. תצורת RSS, רענון במצב שבת, מניות נבחרות, קואורדינטות העיר והעדפות הלוח העברי הם חלק מההעדפות המסונכרנות. גם בחירת הלוחות ומצב תצוגת סדר היום מסתנכרנים. כל שמירה מתזמנת סנכרון אוטומטי לאחר הפסקה קצרה; ללא חיבור השינויים נשמרים בתור המקומי ונשלחים בחיבור מחדש. אירועי Apple, הרשאות macOS, תצורת החיבור, אישורי Keychain, מבנה החלונות ומטמונים מקומיים נשארים על המכשיר.
 
 בהעלאת קבצים נשמרים מזהה ההעברה והמיקום שאושר גם בלקוח וגם בשרת. התוכן נבדק באמצעות סכום ביקורת לפני שהוא הופך לגרסה שאינה נדרסת. גם הורדות נבדקות. קובץ עבודה ששונה ביישום אחר יכול להיטען כגרסה חדשה. נתיבי הקבצים הפיזיים בשרת מבוססים על מזהים שנוצרו, ולא על שמות התיקיות הנראים בממשק.
 
@@ -491,7 +491,7 @@ FILES_ROOT=/tmp/bee-companion-api PYTHONPATH=backend \
   .venv/bin/python scripts/export-openapi.py
 ```
 
-תהליך CI מריץ בדיקות שרת ואריזה, בודק שהסכמה מעודכנת ומריץ בדיקות של האפליקציה המקורית. תיעוד API זמין בכתובת `http://127.0.0.1:8787/docs`; נקודות קצה פרטיות מחייבות הזדהות.
+האימות מתבצע מקומית: בדיקות שרת ואריזה, בדיקת עדכניות הסכמה ובדיקות האפליקציה המקורית. לא מוגדרים תהליכי GitHub Actions. תיעוד API זמין בכתובת `http://127.0.0.1:8787/docs`; נקודות קצה פרטיות מחייבות הזדהות.
 
 השרת מבוסס על FastAPI, SQLAlchemy/Alembic, PostgreSQL 17, אחסון קבצים פרטי ותהליך רקע המשתמש ב־PostgreSQL. ישויות העבודה עם הגרסאות משתמשות במעטפת `records` משותפת, סוגים מאומתים ותוכן בעל ערכי מחרוזת. להפעלות התחברות, גרסאות קבצים, העלאות, משימות רקע, מטמון ספקים, קבלות פעולות ויומן שינויים יש טבלאות ייעודיות. הערות עשירות שומרות RTF בקידוד base64 וטקסט שחולץ במעטפת ההערה. האפליקציה המקורית משתמשת ב־SwiftUI/AppKit, GRDB/FTS5, EventKit, UserNotifications, Keychain ו־URLSession.
 

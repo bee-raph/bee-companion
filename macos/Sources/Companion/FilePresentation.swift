@@ -70,10 +70,21 @@ struct TaskCompletionButton: View {
   }
 }
 enum TaskCompletion {
+  static func normalized(_ input: Item, previous: Item?) -> Item {
+    guard input.kind == "tasks" else { return input }
+    var task = input
+    if task.body["status"] == "Done" {
+      task.body["archived"] = "true"
+    } else if previous?.body["status"] == "Done" {
+      task.body["archived"] = "false"
+    }
+    return task
+  }
   static func toggled(_ task: Item) -> Item {
     guard task.kind == "tasks", !task.deleted else { return task }
     var changed = task
     changed.body["status"] = task.body["status"] == "Done" ? "To do" : "Done"
+    changed.body["archived"] = changed.body["status"] == "Done" ? "true" : "false"
     return changed
   }
 }

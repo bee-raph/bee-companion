@@ -317,7 +317,9 @@
     "Mark as to do": "Mark as to do",
     "Attach files…": "Attach files…",
     "All-day": "All-day",
-    "Previous": "Previous"
+    "Previous": "Previous",
+    "Active": "Active",
+    "Archived": "Archived"
   },
   "he": {
     "Today": "היום",
@@ -637,7 +639,9 @@
     "Mark as to do": "סימון לביצוע",
     "Attach files…": "צירוף קבצים…",
     "All-day": "כל היום",
-    "Previous": "הקודם"
+    "Previous": "הקודם",
+    "Active": "פעילות",
+    "Archived": "בארכיון"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -957,7 +961,9 @@
     "Mark as to do": "Marquer comme à faire",
     "Attach files…": "Joindre des fichiers…",
     "All-day": "Toute la journée",
-    "Previous": "Précédent"
+    "Previous": "Précédent",
+    "Active": "Actives",
+    "Archived": "Archivées"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1277,7 +1283,9 @@
     "Mark as to do": "Отметить невыполненным",
     "Attach files…": "Прикрепить файлы…",
     "All-day": "Весь день",
-    "Previous": "Назад"
+    "Previous": "Назад",
+    "Active": "Активные",
+    "Archived": "Архивные"
   },
   "es": {
     "Today": "Hoy",
@@ -1597,6 +1605,8 @@
     "Mark as to do": "Marcar como pendiente",
     "Attach files…": "Adjuntar archivos…",
     "All-day": "Todo el día",
-    "Previous": "Anterior"
+    "Previous": "Anterior",
+    "Active": "Activas",
+    "Archived": "Archivadas"
   }
 }

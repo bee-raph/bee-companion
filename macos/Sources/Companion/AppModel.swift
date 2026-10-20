@@ -16,6 +16,7 @@ import SwiftUI
   var api: API?
   var directory: URL
   private var syncTask: Task<Void, Never>?
+  private var scheduledSync: Task<Void, Never>?
   init() {
     directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("WorkCompanion")
@@ -57,7 +58,8 @@ import SwiftUI
       conflicts = try store.conflicts()
     } catch { self.error = error.localizedDescription }
   }
-  func save(_ item: Item) {
+  func save(_ input: Item) {
+    let item = TaskCompletion.normalized(input, previous: items.first { $0.id == input.id })
     do {
       try store.save(item)
       var saved = item
@@ -70,7 +72,22 @@ import SwiftUI
       if item.kind == "user_settings" { L10n.language = language }
       pending = try store.pendingCount()
       if !conflicts.isEmpty { conflicts = try store.conflicts() }
+      scheduleSynchronization()
     } catch { self.error = error.localizedDescription }
+  }
+  private func scheduleSynchronization() {
+    scheduledSync?.cancel()
+    scheduledSync = Task { [weak self] in
+      do { try await Task.sleep(for: .seconds(2)) } catch { return }
+      guard let self else { return }
+      self.scheduledSync = nil
+      await self.sync()
+    }
+  }
+  func setPreference(_ key: String, _ value: String) {
+    var settings = preferences
+    settings.body[key] = value
+    save(settings)
   }
   @discardableResult func trash(_ item: Item) -> Bool {
     NotificationCenter.default.post(name: .flushNoteEdits, object: nil)

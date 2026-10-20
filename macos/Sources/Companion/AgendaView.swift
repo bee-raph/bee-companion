@@ -15,6 +15,8 @@ enum CalendarSelection {
   @Published var calendars: [EKCalendar] = []
   @Published var access: EKAuthorizationStatus = .notDetermined
   @Published var requesting = false
+  var storedCalendarIDs: [String]?
+  var selectionChanged: (([String]) -> Void)?
   @Published var message = "Enable Apple Calendar to show local appointments."
   init(
     authorization: @escaping () -> EKAuthorizationStatus = {
@@ -26,7 +28,7 @@ enum CalendarSelection {
   var selectedIDs: Set<String> {
     CalendarSelection.resolve(
       available: calendars.map(\.calendarIdentifier),
-      stored: UserDefaults.standard.stringArray(forKey: "selectedCalendars"))
+      stored: storedCalendarIDs)
   }
   func refresh(_ date: Date, days: Int = 7) {
     access = authorization()
@@ -73,12 +75,13 @@ enum CalendarSelection {
     } else {
       ids.remove(calendar.calendarIdentifier)
     }
-    UserDefaults.standard.set(Array(ids), forKey: "selectedCalendars")
+    storedCalendarIDs = Array(ids).sorted()
+    selectionChanged?(storedCalendarIDs ?? [])
     refresh(date, days: days)
   }
   func selectAll(_ enabled: Bool, date: Date, days: Int) {
-    UserDefaults.standard.set(
-      enabled ? calendars.map(\.calendarIdentifier) : [], forKey: "selectedCalendars")
+    storedCalendarIDs = enabled ? calendars.map(\.calendarIdentifier).sorted() : []
+    selectionChanged?(storedCalendarIDs ?? [])
     refresh(date, days: days)
   }
   func enable(date: Date, days: Int) async {
@@ -109,6 +112,19 @@ struct AgendaView: View {
       : range == "Week"
         ? Calendar.current.dateInterval(of: .weekOfYear, for: date)!.start
         : Calendar.current.startOfDay(for: date)
+  }
+  func configurePreferences() {
+    agenda.selectionChanged = { ids in
+      guard let data = try? JSONEncoder().encode(ids) else { return }
+      model.setPreference("selectedCalendars", String(decoding: data, as: UTF8.self))
+    }
+    if let raw = model.preferences.body["selectedCalendars"], let data = raw.data(using: .utf8) {
+      agenda.storedCalendarIDs = try? JSONDecoder().decode([String].self, from: data)
+    } else if let legacy = UserDefaults.standard.stringArray(forKey: "selectedCalendars") {
+      agenda.storedCalendarIDs = legacy
+      agenda.selectionChanged?(legacy)
+    }
+    range = model.preferences.body["agendaRange"] ?? "Day"
   }
   var entries: [AgendaEntry] {
     let apple = agenda.events.map { event in
@@ -234,9 +250,22 @@ struct AgendaView: View {
       Divider()
       AgendaTimeline(days: visibleDays, selectedDay: $date, entries: entries)
     }.background(Color(nsColor: .windowBackgroundColor))
-      .onAppear { agenda.refresh(start, days: days) }
+      .onAppear {
+        configurePreferences()
+        agenda.refresh(start, days: days)
+      }
       .onChange(of: date) { _, _ in agenda.refresh(start, days: days) }
-      .onChange(of: range) { _, _ in agenda.refresh(start, days: days) }
+      .onChange(of: range) { _, value in
+        if model.preferences.body["agendaRange"] != value {
+          model.setPreference("agendaRange", value)
+        }
+        agenda.refresh(start, days: days)
+      }
+      .onChange(of: model.preferences.body["selectedCalendars"]) { _, _ in
+        configurePreferences()
+        agenda.refresh(start, days: days)
+      }
+      .onChange(of: model.preferences.body["agendaRange"]) { _, value in range = value ?? "Day" }
       .onReceive(
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
       ) { _ in agenda.refresh(start, days: days) }
