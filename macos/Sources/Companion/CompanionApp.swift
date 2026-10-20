@@ -77,6 +77,7 @@ struct ContentView: View {
   @EnvironmentObject var shabbat: ShabbatController
   @State var section: Section? = .today
   @State var query = ""
+  @State private var requestedItemID: String?
   var isOnline: Bool { model.message.hasPrefix("Up to date") }
   var body: some View {
     NavigationSplitView {
@@ -145,21 +146,29 @@ struct ContentView: View {
         .navigationTitle("")
     } detail: {
       Group {
-        switch section ?? .today {
-        case .today: TodayView()
-        case .tasks: ItemListView(kind: "tasks", query: query)
-        case .notes: ItemListView(kind: "notes", query: query)
-        case .files: FilesView(query: query)
-        case .crm: CRMView(query: query)
-        case .alarms: ItemListView(kind: "reminders", query: query)
-        case .archive: ItemListView(kind: nil, query: query, archived: true)
-        case .agenda: AgendaView()
-        case .stocks: StocksView()
-        case .rss: RSSReaderView()
-        case .settings: SettingsView()
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          GlobalSearchView(query: query, open: openSearchResult)
+        } else {
+          switch section ?? .today {
+          case .today: TodayView()
+          case .tasks: ItemListView(kind: "tasks", query: "", requestedID: requestedItemID)
+          case .notes: ItemListView(kind: "notes", query: "", requestedID: requestedItemID)
+          case .files: FilesView(query: "")
+          case .crm: CRMView(query: "", requestedID: requestedItemID)
+          case .alarms: ItemListView(kind: "reminders", query: "", requestedID: requestedItemID)
+          case .archive:
+            ItemListView(kind: nil, query: "", archived: true, requestedID: requestedItemID)
+          case .agenda: AgendaView()
+          case .stocks: StocksView()
+          case .rss: RSSReaderView()
+          case .settings: SettingsView()
+          }
         }
       }.id(section ?? .today).background(BeeTheme.canvas)
-        .navigationTitle((section ?? .today).title())
+        .navigationTitle(
+          query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (section ?? .today).title() : L10n.text("Search results")
+        )
         .searchable(text: $query, prompt: L10n.text("Search your workspace"))
         .toolbar {
           ToolbarItemGroup(placement: .primaryAction) {
@@ -193,6 +202,12 @@ struct ContentView: View {
         }
     }.navigationSplitViewStyle(.balanced)
   }
+  private func openSearchResult(_ result: WorkspaceSearchResult) {
+    guard let item = model.items.first(where: { $0.id == result.id }), !item.deleted else { return }
+    requestedItemID = item.id
+    section = WorkspaceSearchResult(item: item, excerpt: "").destination
+    query = ""
+  }
   func sidebarRow(_ item: Section) -> some View {
     HStack(spacing: 10) {
       Image(systemName: item.symbol).font(.system(size: 14, weight: .medium))
@@ -218,6 +233,7 @@ struct ItemListView: View {
   var kind: String?
   var query: String
   var archived = false
+  var requestedID: String? = nil
   @State var selected: String?
   @State var filter = "All"
   @State private var taskTab = "Active"
@@ -324,6 +340,9 @@ struct ItemListView: View {
           detail: "Choose an item from the list, or create something new.",
           symbol: kind == "notes" ? "square.and.pencil" : "rectangle.and.pencil.and.ellipsis")
       }
+    }
+    .onAppear {
+      if let id = requestedID, rows.contains(where: { $0.id == id }) { selected = id }
     }
     .task(id: "\(model.contentRevision):" + query) {
       guard !query.isEmpty else {

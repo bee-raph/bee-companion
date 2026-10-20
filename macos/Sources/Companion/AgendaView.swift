@@ -99,6 +99,7 @@ enum CalendarSelection {
 struct AgendaView: View {
   @EnvironmentObject var model: AppModel
   @StateObject var agenda = AgendaService()
+  @StateObject private var hebrewAgenda = HebrewAgendaData()
   @State var date = Date()
   @State var range = "Day"
   var days: Int {
@@ -149,6 +150,14 @@ struct AgendaView: View {
     range == "Week"
       ? (0..<7).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: start) }
       : [Calendar.current.startOfDay(for: date)]
+  }
+  var hebrewDays: [Date] {
+    range == "Month" ? AgendaCalendarDays.grid(date: date, range: range) : visibleDays
+  }
+  var hebrewRequestKey: String {
+    HebrewAgendaData.requestKey(
+      days: hebrewDays, settings: model.preferences.body,
+      instance: model.configuration?.instanceID ?? "local", language: model.language)
   }
   func step(_ direction: Int) {
     date =
@@ -242,13 +251,23 @@ struct AgendaView: View {
         .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(
           .bottom, 8)
       if range == "Month" {
-        AgendaGrid(date: $date, range: range, events: agenda.events, items: model.items).padding(
+        AgendaGrid(
+          date: $date, range: range, events: agenda.events, items: model.items,
+          hebrewDays: hebrewAgenda.days
+        ).padding(
           .horizontal, 18
         ).padding(.bottom, 12)
       }
       Divider()
-      AgendaTimeline(days: visibleDays, selectedDay: $date, entries: entries)
+      if let message = hebrewAgenda.message {
+        Text(L10n.text(message)).font(.caption).foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(
+            .vertical, 4)
+      }
+      AgendaTimeline(
+        days: visibleDays, selectedDay: $date, entries: entries, hebrewDays: hebrewAgenda.days)
     }.background(Color(nsColor: .windowBackgroundColor))
+      .task(id: hebrewRequestKey) { await hebrewAgenda.load(dates: hebrewDays, model: model) }
       .onAppear {
         configurePreferences()
         agenda.refresh(start, days: days)
@@ -561,44 +580,53 @@ struct AgendaGrid: View {
   var range: String
   var events: [CalendarEvent]
   var items: [Item]
+  var hebrewDays: [String: HebrewDayInfo] = [:]
   var dates: [Date] {
-    let calendar = Calendar.current
-    let interval = calendar.dateInterval(of: range == "Month" ? .month : .weekOfYear, for: date)!
-    let first =
-      range == "Month"
-      ? calendar.dateInterval(of: .weekOfYear, for: interval.start)!.start : interval.start
-    let count = range == "Month" ? 42 : 7
-    return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
+    AgendaCalendarDays.grid(date: date, range: range)
   }
+
   var body: some View {
     let counts = AgendaDayCounts.values(events: events, items: items)
-    return LazyVGrid(
-      columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1
-    ) {
-      ForEach(dates, id: \.self) { day in
-        Button {
-          date = day
-        } label: {
-          VStack(spacing: 3) {
-            Text(day.formatted(.dateTime.weekday(.abbreviated))).font(.caption2).foregroundStyle(
-              .secondary)
-            Text(day.formatted(.dateTime.day())).font(.headline)
-            let count = counts[Calendar.current.startOfDay(for: day)] ?? 0
-            Text(count == 0 ? " " : L10n.format("%d items", count)).font(.caption2)
-          }.frame(maxWidth: .infinity).padding(7)
-            .foregroundStyle(
-              Calendar.current.isDate(date, inSameDayAs: day) ? Color.white : Color.primary
-            )
-            .background(
-              Calendar.current.isDate(date, inSameDayAs: day)
-                ? Color(nsColor: .selectedContentBackgroundColor)
-                : Color(nsColor: .controlBackgroundColor)
-            )
-            .contentShape(Rectangle())
-        }.buttonStyle(.plain)
-          .accessibilityAddTraits(
-            Calendar.current.isDate(date, inSameDayAs: day) ? .isSelected : [])
+    return VStack(spacing: 4) {
+      HStack(spacing: 1) {
+        ForEach(Array(dates.prefix(7)), id: \.self) { day in
+          Text(day.formatted(.dateTime.weekday(.abbreviated).locale(L10n.locale)))
+            .font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+        }
       }
-    }.padding(1).background(.separator)
+      LazyVGrid(
+        columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1
+      ) {
+        ForEach(dates, id: \.self) { day in
+          Button {
+            date = day
+          } label: {
+            VStack(spacing: 2) {
+              Text(day.formatted(.dateTime.day())).font(.headline)
+              if let hebrew = hebrewDays[HebrewAgendaPresentation.key(day)] {
+                Text(hebrew.date).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.75)
+                if !hebrew.events.isEmpty {
+                  Text(hebrew.events.joined(separator: " · ")).font(.system(size: 9)).lineLimit(1)
+                    .help(hebrew.summary)
+                }
+              }
+              let count = counts[Calendar.current.startOfDay(for: day)] ?? 0
+              Text(count == 0 ? " " : L10n.format("%d items", count)).font(.caption2)
+            }.frame(maxWidth: .infinity).padding(4)
+              .foregroundStyle(
+                Calendar.current.isDate(date, inSameDayAs: day) ? Color.white : Color.primary
+              )
+              .background(
+                Calendar.current.isDate(date, inSameDayAs: day)
+                  ? Color(nsColor: .selectedContentBackgroundColor)
+                  : Color(nsColor: .controlBackgroundColor)
+              )
+              .contentShape(Rectangle())
+          }.buttonStyle(.plain)
+            .accessibilityAddTraits(
+              Calendar.current.isDate(date, inSameDayAs: day) ? .isSelected : [])
+        }
+      }.padding(1).background(.separator)
+    }
   }
 }

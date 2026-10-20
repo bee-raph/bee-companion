@@ -80,6 +80,7 @@ enum CRM {
 struct CRMView: View {
   @EnvironmentObject var model: AppModel
   let query: String
+  var requestedID: String? = nil
   @State private var selection: String?
   @State private var editing: Item?
   var contacts: [Item] {
@@ -127,6 +128,9 @@ struct CRMView: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
+    }
+    .onAppear {
+      if let id = requestedID, contacts.contains(where: { $0.id == id }) { selection = id }
     }
     .sheet(item: $editing) { contact in
       CRMContactEditor(initial: contact) { saved in

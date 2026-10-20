@@ -75,12 +75,17 @@ struct Conflict: Identifiable, Sendable {
   var local: Item
   var server: Item?
 }
-struct HebrewResponse: Codable {
-  struct Event: Codable, Identifiable {
+struct HebrewResponse: Codable, Sendable {
+  struct Event: Codable, Identifiable, Sendable {
     var title: String
     var date: String
     var hebrew: String?
     var category: String?
+    var originalTitle: String? = nil
+    enum CodingKeys: String, CodingKey {
+      case title, date, hebrew, category
+      case originalTitle = "title_orig"
+    }
     var id: String { title + date }
   }
   var items: [Event]

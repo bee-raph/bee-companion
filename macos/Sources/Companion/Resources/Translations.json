@@ -379,7 +379,16 @@
     "Unknown CRM record kind": "Unknown CRM record kind",
     "Contact note": "Contact note",
     "Loading contact note…": "Loading contact note…",
-    "Loading note…": "Loading note…"
+    "Loading note…": "Loading note…",
+    "Connect your backend to load Hebrew calendar events.": "Connect your backend to load Hebrew calendar events.",
+    "Hebrew calendar details unavailable; showing saved information.": "Hebrew calendar details unavailable; showing saved information.",
+    "Search results": "Search results",
+    "Notes, reminders, tasks, and CRM contacts": "Notes, reminders, tasks, and CRM contacts",
+    "%d results": "%d results",
+    "Showing the first matches. Refine your search for more specific results.": "Showing the first matches. Refine your search for more specific results.",
+    "No matching records": "No matching records",
+    "Try another word, name, email address, or phone number.": "Try another word, name, email address, or phone number.",
+    "Open matching record": "Open matching record"
   },
   "he": {
     "Today": "היום",
@@ -761,7 +770,16 @@
     "Unknown CRM record kind": "סוג רשומת CRM לא מוכר",
     "Contact note": "הערת איש קשר",
     "Loading contact note…": "טעינת הערת איש הקשר…",
-    "Loading note…": "טעינת הערה…"
+    "Loading note…": "טעינת הערה…",
+    "Connect your backend to load Hebrew calendar events.": "התחברו לשרת לטעינת אירועי לוח השנה העברי.",
+    "Hebrew calendar details unavailable; showing saved information.": "פרטי לוח השנה העברי אינם זמינים; מוצג מידע שמור.",
+    "Search results": "תוצאות חיפוש",
+    "Notes, reminders, tasks, and CRM contacts": "הערות, תזכורות, משימות ואנשי קשר ב־CRM",
+    "%d results": "%d תוצאות",
+    "Showing the first matches. Refine your search for more specific results.": "מוצגות ההתאמות הראשונות. צמצמו את החיפוש לקבלת תוצאות ממוקדות יותר.",
+    "No matching records": "לא נמצאו רשומות מתאימות",
+    "Try another word, name, email address, or phone number.": "נסו מילה, שם, כתובת דוא״ל או מספר טלפון אחרים.",
+    "Open matching record": "פתיחת הרשומה המתאימה"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -1143,7 +1161,16 @@
     "Unknown CRM record kind": "Type d’enregistrement CRM inconnu",
     "Contact note": "Note du contact",
     "Loading contact note…": "Chargement de la note du contact…",
-    "Loading note…": "Chargement de la note…"
+    "Loading note…": "Chargement de la note…",
+    "Connect your backend to load Hebrew calendar events.": "Connectez votre serveur pour charger les événements du calendrier hébraïque.",
+    "Hebrew calendar details unavailable; showing saved information.": "Détails du calendrier hébraïque indisponibles ; affichage des informations enregistrées.",
+    "Search results": "Résultats de recherche",
+    "Notes, reminders, tasks, and CRM contacts": "Notes, rappels, tâches et contacts CRM",
+    "%d results": "%d résultats",
+    "Showing the first matches. Refine your search for more specific results.": "Affichage des premières correspondances. Précisez votre recherche pour des résultats plus ciblés.",
+    "No matching records": "Aucun élément correspondant",
+    "Try another word, name, email address, or phone number.": "Essayez un autre mot, nom, e-mail ou numéro de téléphone.",
+    "Open matching record": "Ouvrir l’élément correspondant"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1525,7 +1552,16 @@
     "Unknown CRM record kind": "Неизвестный тип записи CRM",
     "Contact note": "Заметка контакта",
     "Loading contact note…": "Загрузка заметки контакта…",
-    "Loading note…": "Загрузка заметки…"
+    "Loading note…": "Загрузка заметки…",
+    "Connect your backend to load Hebrew calendar events.": "Подключите сервер для загрузки событий еврейского календаря.",
+    "Hebrew calendar details unavailable; showing saved information.": "Данные еврейского календаря недоступны; показана сохранённая информация.",
+    "Search results": "Результаты поиска",
+    "Notes, reminders, tasks, and CRM contacts": "Заметки, напоминания, задачи и контакты CRM",
+    "%d results": "Результатов: %d",
+    "Showing the first matches. Refine your search for more specific results.": "Показаны первые совпадения. Уточните запрос для более точных результатов.",
+    "No matching records": "Совпадений не найдено",
+    "Try another word, name, email address, or phone number.": "Попробуйте другое слово, имя, адрес почты или номер телефона.",
+    "Open matching record": "Открыть найденную запись"
   },
   "es": {
     "Today": "Hoy",
@@ -1907,6 +1943,15 @@
     "Unknown CRM record kind": "Tipo de registro CRM desconocido",
     "Contact note": "Nota del contacto",
     "Loading contact note…": "Cargando nota del contacto…",
-    "Loading note…": "Cargando nota…"
+    "Loading note…": "Cargando nota…",
+    "Connect your backend to load Hebrew calendar events.": "Conecta tu servidor para cargar eventos del calendario hebreo.",
+    "Hebrew calendar details unavailable; showing saved information.": "Los detalles del calendario hebreo no están disponibles; se muestra la información guardada.",
+    "Search results": "Resultados de búsqueda",
+    "Notes, reminders, tasks, and CRM contacts": "Notas, recordatorios, tareas y contactos CRM",
+    "%d results": "%d resultados",
+    "Showing the first matches. Refine your search for more specific results.": "Se muestran las primeras coincidencias. Afina la búsqueda para obtener resultados más específicos.",
+    "No matching records": "No se encontraron registros",
+    "Try another word, name, email address, or phone number.": "Prueba otra palabra, nombre, correo o número de teléfono.",
+    "Open matching record": "Abrir el registro encontrado"
   }
 }

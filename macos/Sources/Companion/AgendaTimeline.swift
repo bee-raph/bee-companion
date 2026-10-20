@@ -79,6 +79,7 @@ struct AgendaTimeline: View {
   let days: [Date]
   @Binding var selectedDay: Date
   let entries: [AgendaEntry]
+  var hebrewDays: [String: HebrewDayInfo] = [:]
   @State private var detail: AgendaEntry?
   private let hourHeight: CGFloat = 68
   private let gutter: CGFloat = 58
@@ -105,6 +106,10 @@ struct AgendaTimeline: View {
                 .headline
               )
               .foregroundStyle(calendar.isDateInToday(day) ? Color.accentColor : Color.primary)
+              if let hebrew = hebrewDays[HebrewAgendaPresentation.key(day)] {
+                Text(hebrew.date).font(.caption).foregroundStyle(.secondary)
+                  .lineLimit(2).multilineTextAlignment(.center)
+              }
             }.frame(maxWidth: .infinity).padding(.vertical, 10)
               .background(
                 calendar.isDate(day, inSameDayAs: selectedDay)
@@ -118,15 +123,23 @@ struct AgendaTimeline: View {
           .padding(.top, 8)
         ForEach(days, id: \.self) { day in
           let allDay = entries.filter { $0.allDay && belongs($0, to: day) }
+          let hebrewEvents = hebrewDays[HebrewAgendaPresentation.key(day)]?.events ?? []
           ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 4) {
-              if allDay.isEmpty { Text("—").foregroundStyle(.tertiary).font(.caption) }
+              if allDay.isEmpty && hebrewEvents.isEmpty {
+                Text("—").foregroundStyle(.tertiary).font(.caption)
+              }
+              ForEach(hebrewEvents, id: \.self) { event in
+                Text(event).font(.caption).lineLimit(2).help(event)
+                  .frame(maxWidth: .infinity, alignment: .leading).padding(5)
+                  .background(BeeTheme.amber.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+              }
               ForEach(allDay) { entry in eventCard(entry, compact: true).frame(height: 28) }
             }.padding(6).frame(maxWidth: .infinity, alignment: .topLeading)
           }.frame(
             height: min(
               120,
-              CGFloat(max(1, allDay.count)) * 32 + 12)
+              CGFloat(max(1, allDay.count + hebrewEvents.count)) * 32 + 12)
           )
         }
       }.frame(maxHeight: 120)

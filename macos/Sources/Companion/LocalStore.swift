@@ -33,6 +33,21 @@ final class LocalStore: @unchecked Sendable {
           "UPDATE items SET revision=COALESCE(json_extract(CAST(payload AS TEXT), '$.revision'), 0)"
       )
     }
+    migrations.registerMigration("v5-workspace-search") { db in
+      let keys = WorkspaceSearchIndex.fields.map { "'" + $0 + "'" }.joined(separator: ",")
+      try db.execute(sql: "DELETE FROM search")
+      try db.execute(
+        sql: """
+          INSERT INTO search(id,title,description,body)
+          SELECT json_extract(CAST(payload AS TEXT),'$.id'),
+            COALESCE(json_extract(CAST(payload AS TEXT),'$.body.title'),''),
+            COALESCE(json_extract(CAST(payload AS TEXT),'$.body.description'),''),
+            COALESCE((SELECT group_concat(value, char(10))
+              FROM json_each(json_extract(CAST(payload AS TEXT),'$.body'))
+              WHERE key IN (\(keys))), '')
+          FROM items WHERE COALESCE(json_extract(CAST(payload AS TEXT),'$.deleted'),0)=0
+          """)
+    }
     try migrations.migrate(db)
   }
   func all() throws -> [Item] {
@@ -50,7 +65,9 @@ final class LocalStore: @unchecked Sendable {
     if !item.deleted {
       try db.execute(
         sql: "INSERT INTO search VALUES(?,?,?,?)",
-        arguments: [item.id, item.title, item.body["description"] ?? "", item.body["text"] ?? ""])
+        arguments: [
+          item.id, item.title, item.body["description"] ?? "", WorkspaceSearchIndex.text(item),
+        ])
     }
   }
   func save(_ input: Item) throws {
@@ -185,6 +202,51 @@ final class LocalStore: @unchecked Sendable {
           sql: "INSERT INTO outbox(id,operation,payload) VALUES(?,?,?)",
           arguments: [item.id, m.operationID, try JSONEncoder().encode(m)])
       }
+    }
+  }
+  func globalSearch(_ query: String, limit: Int = 200) throws -> [WorkspaceSearchMatch] {
+    let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !query.isEmpty else { return [] }
+    let limit = min(200, max(1, limit))
+    let kinds = WorkspaceSearchIndex.kinds.map { "'" + $0 + "'" }.joined(separator: ",")
+    return try db.read { db in
+      var matches: [WorkspaceSearchMatch] = []
+      if let expression = WorkspaceSearchIndex.expression(query) {
+        matches = try Row.fetchAll(
+          db,
+          sql: """
+            SELECT search.id, snippet(search,-1,'','',' … ',32) AS excerpt
+            FROM search JOIN items ON items.id=search.id
+            WHERE search MATCH ? AND items.kind IN (\(kinds))
+            ORDER BY bm25(search,0,8,4,1) LIMIT ?
+            """, arguments: [expression, limit]
+        ).map {
+          WorkspaceSearchMatch(id: $0["id"], excerpt: $0["excerpt"])
+        }
+      }
+      guard matches.count < limit else { return matches }
+      var seen = Set(matches.map(\.id))
+      // Substring fallback covers phone suffixes and text inside words without decoding rich documents.
+      let rows = try Row.fetchCursor(
+        db,
+        sql: """
+          SELECT search.id, search.title, search.description, search.body
+          FROM search JOIN items ON items.id=search.id WHERE items.kind IN (\(kinds))
+          """)
+      while let row = try rows.next(), matches.count < limit {
+        let id: String = row["id"]
+        guard !seen.contains(id) else { continue }
+        let fields: [String] = [row["title"], row["description"], row["body"]]
+        guard
+          let field = fields.first(where: {
+            $0.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+          })
+        else { continue }
+        seen.insert(id)
+        matches.append(
+          WorkspaceSearchMatch(id: id, excerpt: WorkspaceSearchIndex.excerpt(field, query: query)))
+      }
+      return matches
     }
   }
   func search(_ query: String) throws -> Set<String> {
