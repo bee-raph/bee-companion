@@ -51,10 +51,18 @@ struct FilesView: View {
               ByteCountFormatter.string(fromByteCount: $0, countStyle: .file)
             } ?? L10n.text("—"))
         }
-        TableColumn(L10n.text("Modified")) { item in
-          Text(item.body["modified"].map(BeeDisplayTime.timestamp) ?? L10n.text("—"))
-            .foregroundStyle(
-              .secondary)
+        TableColumn(L10n.text("Created")) { item in
+          Text(
+            item.body["createdAt"].map(BeeDisplayTime.timestamp) ?? L10n.text("Date unavailable")
+          )
+          .foregroundStyle(.secondary)
+        }
+        TableColumn(L10n.text("Last updated")) { item in
+          Text(
+            item.body["updatedAt"].map(BeeDisplayTime.timestamp) ?? L10n.text("Date unavailable")
+          )
+          .foregroundStyle(
+            .secondary)
         }
         TableColumn(L10n.text("Availability")) { item in
           Text(
@@ -88,6 +96,7 @@ struct FilesView: View {
 
       if let item = CollectionSelection.item(selected, in: rows) {
         VStack(alignment: .leading) {
+          RecordDatesView(item: item)
           HStack {
             TextField(L10n.text("Name"), text: $name)
             Button(L10n.text("Rename")) {

@@ -391,7 +391,9 @@
     "Open matching record": "Open matching record",
     "Task history": "Task history",
     "Created": "Created",
-    "Creation date unavailable": "Creation date unavailable"
+    "Creation date unavailable": "Creation date unavailable",
+    "Last updated": "Last updated",
+    "Date unavailable": "Date unavailable"
   },
   "he": {
     "Today": "היום",
@@ -785,7 +787,9 @@
     "Open matching record": "פתיחת הרשומה המתאימה",
     "Task history": "היסטוריית משימה",
     "Created": "נוצרה",
-    "Creation date unavailable": "תאריך היצירה אינו זמין"
+    "Creation date unavailable": "תאריך היצירה אינו זמין",
+    "Last updated": "עודכן לאחרונה",
+    "Date unavailable": "התאריך אינו זמין"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -1179,7 +1183,9 @@
     "Open matching record": "Ouvrir l’élément correspondant",
     "Task history": "Historique de la tâche",
     "Created": "Créée",
-    "Creation date unavailable": "Date de création indisponible"
+    "Creation date unavailable": "Date de création indisponible",
+    "Last updated": "Dernière modification",
+    "Date unavailable": "Date indisponible"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1573,7 +1579,9 @@
     "Open matching record": "Открыть найденную запись",
     "Task history": "История задачи",
     "Created": "Создана",
-    "Creation date unavailable": "Дата создания недоступна"
+    "Creation date unavailable": "Дата создания недоступна",
+    "Last updated": "Последнее обновление",
+    "Date unavailable": "Дата недоступна"
   },
   "es": {
     "Today": "Hoy",
@@ -1967,6 +1975,8 @@
     "Open matching record": "Abrir el registro encontrado",
     "Task history": "Historial de la tarea",
     "Created": "Creada",
-    "Creation date unavailable": "Fecha de creación no disponible"
+    "Creation date unavailable": "Fecha de creación no disponible",
+    "Last updated": "Última actualización",
+    "Date unavailable": "Fecha no disponible"
   }
 }

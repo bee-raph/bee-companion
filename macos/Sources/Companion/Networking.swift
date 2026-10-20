@@ -1,45 +1,16 @@
 import Foundation
-import Security
 
-struct Keychain {
-  static func load(_ key: String) -> Data? {
-    var result: CFTypeRef?
-    let query: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "WorkCompanion",
-      kSecAttrAccount as String: key, kSecReturnData as String: true,
-    ]
-    guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
-    return result as? Data
-  }
-  static func save(_ data: Data?, key: String) throws {
-    let query: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "WorkCompanion",
-      kSecAttrAccount as String: key,
-    ]
-    SecItemDelete(query as CFDictionary)
-    if let data {
-      var insert = query
-      insert[kSecValueData as String] = data
-      insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-      let status = SecItemAdd(insert as CFDictionary, nil)
-      guard status == errSecSuccess else {
-        throw CompanionError.message("Keychain error \(status)")
-      }
-    }
-  }
-}
 actor API {
+  private let credentials = SessionCredentials()
   let configuration: InstanceConfiguration
   var tokens: Tokens?
   private var refreshFlight: Task<Void, Error>?
   private var credentialsLoaded = false
   init(_ config: InstanceConfiguration) { configuration = config }
-  private func loadCredentialsIfNeeded() {
+  private func loadCredentialsIfNeeded() throws {
     guard !credentialsLoaded else { return }
+    tokens = try credentials.load(configuration.instanceID)
     credentialsLoaded = true
-    tokens = Keychain.load(configuration.instanceID).flatMap {
-      try? JSONDecoder().decode(Tokens.self, from: $0)
-    }
   }
   func login(_ login: String, _ password: String) async throws {
     let remote: RemoteInstance = try await request("instance", authorized: false)
@@ -53,13 +24,13 @@ actor API {
     try store(result)
   }
   func store(_ value: Tokens) throws {
-    try Keychain.save(JSONEncoder().encode(value), key: configuration.instanceID)
+    try credentials.save(value, key: configuration.instanceID)
     tokens = value
     credentialsLoaded = true
   }
   func signOut() async throws {
     let _: [String: Bool] = try await request("auth/logout", method: "POST")
-    try Keychain.save(nil, key: configuration.instanceID)
+    try credentials.save(nil, key: configuration.instanceID)
     tokens = nil
   }
   func request<T: Decodable>(
@@ -86,7 +57,7 @@ actor API {
     try await flight.value
   }
   func download(_ path: String, to target: URL, checksum: String, retry: Bool = true) async throws {
-    loadCredentialsIfNeeded()
+    try loadCredentialsIfNeeded()
     guard let url = URL(string: configuration.apiBaseURL.absoluteString + "/api/v1/" + path),
       let tokens
     else { throw CompanionError.message("Sign in in Settings") }
@@ -126,7 +97,7 @@ actor API {
     request.timeoutInterval = 30
     request.setValue(contentType, forHTTPHeaderField: "Content-Type")
     if authorized {
-      loadCredentialsIfNeeded()
+      try loadCredentialsIfNeeded()
       guard let tokens else { throw CompanionError.message("Sign in in Settings") }
       request.setValue("Bearer " + tokens.accessToken, forHTTPHeaderField: "Authorization")
     }

@@ -202,6 +202,7 @@ struct CRMContactDetail: View {
         if let addresses = contact.body["addresses"], !addresses.isEmpty {
           LabeledContent(L10n.text("Addresses")) { Text(addresses).textSelection(.enabled) }
         }
+        RecordDatesView(item: contact)
         CRMContactNote(contact: contact)
         CRMAttachments(owner: contact)
         Divider()
@@ -245,6 +246,7 @@ struct CRMContactDetail: View {
                   Image(systemName: "alarm")
                 }
               }
+              RecordDatesView(item: action)
               CRMAttachments(owner: action)
             }.padding().background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
           }
