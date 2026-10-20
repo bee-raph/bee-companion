@@ -45,11 +45,11 @@ Click the labeled **Shabbat mode** button on Today or in the toolbar, press **�
 - Upcoming zmanim, with the next occurrence emphasized.
 - Local weather, temperature, daily high/low, humidity, and wind.
 - Up to six selected watchlist instruments.
-- Up to three feed columns whose headlines and summaries rotate automatically.
+- Up to three feed columns, each displaying its latest ten headlines together, newest first, without scrolling or rotation.
 
 The layout uses large type, a dark high-contrast background, and no seconds display. The display stays awake while the window is open. Once started, the screen updates without mouse input. **Esc** closes the Shabbat window and releases the display-awake assertion. Activation is on demand; there is no automatic Friday activation or scheduled shutdown.
 
-In Settings, choose a refresh interval from one minute to one hour, a headline rotation interval from 10 to 120 seconds, and the stocks to display. These choices, feed URLs, and location preferences synchronize with the backend. Weather and zmanim use the configured city coordinates/time zone rather than requesting continuous location tracking. Feed, weather, and market caches have their own lifetimes, so a refresh check does not necessarily mean a new provider request every time. Feed cache is at most five minutes, weather ten minutes, and market candles one minute.
+In Settings, choose a refresh interval from one minute to one hour, the stocks to display. These choices, feed URLs, and location preferences synchronize with the backend. Weather and zmanim use the configured city coordinates/time zone rather than requesting continuous location tracking. Feed, weather, and market caches have their own lifetimes, so a refresh check does not necessarily mean a new provider request every time. Feed cache is at most five minutes, weather ten minutes, and market candles one minute.
 
 ## Get started
 
@@ -146,7 +146,7 @@ The generated configuration contains only an instance name, UUID, API URL, and p
 2. In **Settings**, enter the city name, latitude, longitude, and IANA time zone, for example `Asia/Jerusalem`. Coordinates are entered manually and used for weather and Hebcal calculations. Choose Israel or diaspora observances.
 3. Configure up to three comma-separated world-clock IANA zones.
 4. Add instruments from **Stocks**. Verify each TradingView mapping if provider and exchange naming differ.
-5. In **Settings → RSS & Shabbat mode**, click **Add feed** and enter its name and RSS/Atom URL in the popup, then choose **Save feed**. Repeat for up to three feeds. To change an existing feed, use **Edit**. Choose refresh/rotation intervals and up to six stocks, then click **Save reader & Shabbat settings**. These settings use the same offline queue and revision-checked sync as the rest of the app.
+5. In **Settings → RSS & Shabbat mode**, click **Add feed** and enter its name and RSS/Atom URL in the popup, then choose **Save feed**. Repeat for up to three feeds. To change an existing feed, use **Edit**. Choose refresh intervals and up to six stocks, then click **Save reader & Shabbat settings**. These settings use the same offline queue and revision-checked sync as the rest of the app.
 6. Open **RSS Reader** to load articles. Then press **⌘⇧S** to open Shabbat mode. Leave the app and Docker running for unattended updates. Press **Esc** to exit.
 
 ## London Strategic Edge requirement
@@ -167,7 +167,7 @@ The Mac's GRDB/SQLite database is the interface's immediate source of truth. Sav
 
 The client pushes revisions and pulls a durable server change cursor on launch, reconnect, manual sync, and periodically while active. The API applies expected-revision checks, stores idempotency receipts, and serializes change-log allocation with a PostgreSQL advisory lock. Pull pages and cursors are committed atomically on the client. If another client changed a record, the app keeps the local draft and server version for explicit resolution in Settings; it does not silently discard note or file edits. Deletion markers and history are retained, so cursors currently do not expire.
 
-Tasks, notes, folders, file metadata, attachment links, reminders, occurrence actions, watchlist, and user preferences synchronize. RSS feed configuration, Shabbat refresh/rotation, selected stocks, city coordinates, and Hebrew calendar preferences are part of the synced preferences. Apple appointments, permission decisions, window layout, and local caches remain device-local.
+Tasks, notes, folders, file metadata, attachment links, reminders, occurrence actions, watchlist, and user preferences synchronize. RSS feed configuration, Shabbat refresh, selected stocks, city coordinates, and Hebrew calendar preferences are part of the synced preferences. Apple appointments, permission decisions, window layout, and local caches remain device-local.
 
 Uploads persist their session and confirmed offset on both sides. Content is checksum-verified before becoming an immutable version. Downloads are checksum-checked. A working file modified by another application can be uploaded as a new version. Server file paths use generated identifiers rather than visible folder names.
 
@@ -285,11 +285,11 @@ Bee Companion היא **אפליקציית macOS מקורית למשתמש יחי
 - זמני היום הקרובים, תוך הדגשת הזמן הבא.
 - מזג אוויר מקומי, טמפרטורה, טמפרטורות יומיות מרבית ומזערית, לחות ורוח.
 - עד שישה ניירות ערך נבחרים מרשימת המעקב.
-- עד שלוש עמודות RSS שכותרותיהן ותקציריהן מתחלפים אוטומטית.
+- עד שלוש עמודות RSS, בכל אחת עשר הכותרות האחרונות מוצגות יחד, מהחדשה לישנה, ללא גלילה או החלפת כותרות.
 
 התצוגה משתמשת בטקסט גדול, ברקע כהה עם ניגודיות גבוהה וללא הצגת שניות. המסך נשאר פעיל כל עוד החלון פתוח. לאחר ההפעלה, התוכן מתעדכן ללא שימוש בעכבר. **Esc** סוגר את חלון השבת ומשחרר את מניעת כיבוי המסך. ההפעלה היא לפי דרישה; אין הפעלה אוטומטית ביום שישי או כיבוי מתוזמן.
 
-בהגדרות ניתן לבחור רענון כל דקה עד שעה, החלפת כותרות כל 10 עד 120 שניות ואת ניירות הערך שיוצגו. בחירות אלה, כתובות ההזנות והעדפות המיקום מסתנכרנות עם השרת. מזג האוויר וזמני היום משתמשים בקואורדינטות העיר ובאזור הזמן שהוגדרו, ולא במעקב מיקום רציף. למטמוני ההזנות, מזג האוויר והשוק יש זמני תוקף נפרדים, ולכן בדיקת רענון אינה בהכרח בקשה חדשה לספק בכל פעם. מטמון ההזנות נשמר עד חמש דקות, מטמון מזג האוויר עשר דקות ומטמון נתוני השוק דקה.
+בהגדרות ניתן לבחור רענון כל דקה עד שעה, ואת ניירות הערך שיוצגו. בחירות אלה, כתובות ההזנות והעדפות המיקום מסתנכרנות עם השרת. מזג האוויר וזמני היום משתמשים בקואורדינטות העיר ובאזור הזמן שהוגדרו, ולא במעקב מיקום רציף. למטמוני ההזנות, מזג האוויר והשוק יש זמני תוקף נפרדים, ולכן בדיקת רענון אינה בהכרח בקשה חדשה לספק בכל פעם. מטמון ההזנות נשמר עד חמש דקות, מטמון מזג האוויר עשר דקות ומטמון נתוני השוק דקה.
 
 ## תחילת עבודה
 
@@ -386,7 +386,7 @@ scripts/build-macos release
 2. במסך **Settings**, הזינו שם עיר, קו רוחב, קו אורך ואזור זמן בפורמט IANA, לדוגמה `Asia/Jerusalem`. הקואורדינטות מוזנות ידנית ומשמשות לחישובי מזג האוויר ו־Hebcal. בחרו מנהגי ישראל או חו״ל.
 3. הגדירו עד שלושה אזורי זמן של IANA, מופרדים בפסיקים, עבור השעונים העולמיים.
 4. הוסיפו מכשירים פיננסיים במסך **Stocks**. בדקו את המיפוי ל־TradingView כאשר שמות הספק והבורסה שונים.
-5. תחת **Settings → RSS & Shabbat mode**, לחצו **Add feed**, הזינו בחלונית שם וכתובת RSS/Atom ובחרו **Save feed**. חזרו על הפעולה לעד שלוש הזנות. לשינוי הזנה קיימת השתמשו ב־**Edit**. בחרו מרווחי רענון והחלפת כותרות ועד שש מניות, ואז לחצו **Save reader & Shabbat settings**. ההגדרות משתמשות באותו תור עבודה לא מקוון ובאותו סנכרון מבוסס גרסאות של שאר האפליקציה.
+5. תחת **Settings → RSS & Shabbat mode**, לחצו **Add feed**, הזינו בחלונית שם וכתובת RSS/Atom ובחרו **Save feed**. חזרו על הפעולה לעד שלוש הזנות. לשינוי הזנה קיימת השתמשו ב־**Edit**. בחרו מרווחי רענון ועד שש מניות, ואז לחצו **Save reader & Shabbat settings**. ההגדרות משתמשות באותו תור עבודה לא מקוון ובאותו סנכרון מבוסס גרסאות של שאר האפליקציה.
 6. פתחו את **RSS Reader** כדי לטעון כתבות. לאחר מכן לחצו **⌘⇧S** או על **Shabbat mode** כדי לפתוח את מצב השבת. השאירו את האפליקציה ואת Docker פועלים לעדכונים ללא התערבות. הקישו **Esc** כדי לצאת.
 
 ## דרישת London Strategic Edge
@@ -407,7 +407,7 @@ scripts/build-macos release
 
 הלקוח דוחף שינויים עם מספרי גרסה ומושך סמן שינויים עמיד מהשרת בהפעלה, בחיבור מחדש, בסנכרון ידני ובאופן מחזורי כשהוא פעיל. ה־API בודק גרסה צפויה, שומר קבלות לפעולות חוזרות ומסדר את הקצאת יומן השינויים בעזרת נעילת advisory של PostgreSQL. דפי שינויים והסמנים שלהם נשמרים אטומית בלקוח. אם לקוח אחר שינה רשומה, האפליקציה שומרת את הטיוטה המקומית ואת גרסת השרת לפתרון מפורש בהגדרות; היא אינה משליכה בשקט עריכות של הערות או קבצים. סימוני מחיקה והיסטוריה נשמרים, ולכן לסמנים אין כרגע תאריך תפוגה.
 
-משימות, הערות, תיקיות, מידע על קבצים, קישורי קבצים מצורפים, תזכורות, פעולות על מופעי תזכורות, רשימת המעקב והעדפות משתמש מסתנכרנים. תצורת RSS, רענון והחלפת כותרות במצב שבת, מניות נבחרות, קואורדינטות העיר והעדפות הלוח העברי הם חלק מההעדפות המסונכרנות. אירועי Apple, החלטות הרשאה, מבנה החלונות ומטמונים מקומיים נשארים על המכשיר.
+משימות, הערות, תיקיות, מידע על קבצים, קישורי קבצים מצורפים, תזכורות, פעולות על מופעי תזכורות, רשימת המעקב והעדפות משתמש מסתנכרנים. תצורת RSS, רענון במצב שבת, מניות נבחרות, קואורדינטות העיר והעדפות הלוח העברי הם חלק מההעדפות המסונכרנות. אירועי Apple, החלטות הרשאה, מבנה החלונות ומטמונים מקומיים נשארים על המכשיר.
 
 בהעלאת קבצים נשמרים מזהה ההעברה והמיקום שאושר גם בלקוח וגם בשרת. התוכן נבדק באמצעות סכום ביקורת לפני שהוא הופך לגרסה שאינה נדרסת. גם הורדות נבדקות. קובץ עבודה ששונה ביישום אחר יכול להיטען כגרסה חדשה. נתיבי הקבצים הפיזיים בשרת מבוססים על מזהים שנוצרו, ולא על שמות התיקיות הנראים בממשק.
 

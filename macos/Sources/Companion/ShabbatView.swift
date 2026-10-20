@@ -186,23 +186,28 @@ struct ShabbatView: View {
                 VStack(alignment: .leading, spacing: 15 * scale) {
                   heading(feed.title, symbol: "newspaper", scale: scale)
                   if !feed.articles.isEmpty {
-                    let index =
-                      Int(
-                        clock.date.timeIntervalSince1970
-                          / Double(ReaderPreferences.rotationSeconds(model.preferences.body)))
-                      % feed.articles.count
-                    let article = feed.articles[index]
-                    Text(article.title).font(.system(size: 25 * scale, weight: .semibold))
-                      .lineLimit(4).minimumScaleFactor(0.85)
-                    Text(article.summary).font(.system(size: 19 * scale)).lineSpacing(5).lineLimit(
-                      6
-                    ).foregroundStyle(.white.opacity(0.8))
-                    Spacer(minLength: 2)
-                    HStack {
-                      Text(BeeDisplayTime.timestamp(article.published))
-                      Spacer()
-                      Text("\(index + 1) / \(feed.articles.count)")
-                    }.font(.system(size: 11 * scale)).foregroundStyle(.white.opacity(0.5))
+                    GeometryReader { space in
+                      let articles = Array(feed.articles.prefix(10))
+                      let rowHeight = max(1, space.size.height / CGFloat(articles.count))
+                      VStack(spacing: 0) {
+                        ForEach(articles) { article in
+                          VStack(alignment: .leading, spacing: 2) {
+                            Text(article.title)
+                              .font(.system(size: 15 * scale, weight: .medium))
+                              .lineLimit(rowHeight >= 44 ? 2 : 1)
+                              .minimumScaleFactor(0.85)
+                              .frame(maxWidth: .infinity, alignment: .leading)
+                            if rowHeight >= 54 {
+                              Text(BeeDisplayTime.timestamp(article.published))
+                                .font(.system(size: 10 * scale))
+                                .foregroundStyle(.white.opacity(0.5))
+                            }
+                          }
+                          .frame(height: max(1, rowHeight - 1), alignment: .leading)
+                          Divider().overlay(.white.opacity(0.12))
+                        }
+                      }
+                    }
                   } else {
                     Text(feed.error ?? L10n.text("No articles in this feed.")).foregroundStyle(
                       .white.opacity(0.6))
@@ -222,7 +227,7 @@ struct ShabbatView: View {
               data.refreshing
                 ? L10n.text("Refreshing…")
                 : L10n.format(
-                  "Automatic refresh every %d min · RSS rotates automatically",
+                  "Automatic refresh every %d min · Latest 10 headlines per feed",
                   ReaderPreferences.refreshSeconds(model.preferences.body) / 60)
             )
             Spacer()

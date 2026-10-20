@@ -131,9 +131,6 @@ struct ReadingSettingsView: View {
           Text(L10n.format("%d min", $0 / 60)).tag($0)
         }
       }
-      Picker(L10n.text("Rotate headlines every"), selection: $rotation) {
-        ForEach([10, 15, 30, 60, 120], id: \.self) { Text(L10n.format("%d seconds", $0)).tag($0) }
-      }
       Text(L10n.text("Stocks on the Shabbat screen (up to six)")).font(.headline)
       ForEach(model.items.filter { $0.kind == "watchlist_items" && !$0.deleted }) { item in
         Toggle(

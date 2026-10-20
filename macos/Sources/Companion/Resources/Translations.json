@@ -297,7 +297,8 @@
     "Nightfall": "Nightfall",
     "Solar noon": "Solar noon",
     "Candle lighting": "Candle lighting",
-    "Havdalah": "Havdalah"
+    "Havdalah": "Havdalah",
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Automatic refresh every %d min · Latest 10 headlines per feed"
   },
   "he": {
     "Today": "היום",
@@ -597,7 +598,8 @@
     "Nightfall": "צאת הכוכבים",
     "Solar noon": "חצות היום",
     "Candle lighting": "הדלקת נרות",
-    "Havdalah": "הבדלה"
+    "Havdalah": "הבדלה",
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "רענון אוטומטי כל %d דקות · 10 הכותרות האחרונות בכל הזנה"
   },
   "fr": {
     "Today": "Aujourd’hui",
@@ -897,7 +899,8 @@
     "Nightfall": "Tombée de la nuit",
     "Solar noon": "Midi solaire",
     "Candle lighting": "Allumage des bougies",
-    "Havdalah": "Havdala"
+    "Havdalah": "Havdala",
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualisation toutes les %d min · 10 derniers titres par flux"
   },
   "ru": {
     "Today": "Сегодня",
@@ -1197,7 +1200,8 @@
     "Nightfall": "Наступление ночи",
     "Solar noon": "Солнечный полдень",
     "Candle lighting": "Зажигание свечей",
-    "Havdalah": "Авдала"
+    "Havdalah": "Авдала",
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Обновление каждые %d мин · 10 последних заголовков в каждой ленте"
   },
   "es": {
     "Today": "Hoy",
@@ -1497,6 +1501,7 @@
     "Nightfall": "Anochecer",
     "Solar noon": "Mediodía solar",
     "Candle lighting": "Encendido de velas",
-    "Havdalah": "Havdalá"
+    "Havdalah": "Havdalá",
+    "Automatic refresh every %d min · Latest 10 headlines per feed": "Actualización cada %d min · 10 últimos titulares por fuente"
   }
 }
