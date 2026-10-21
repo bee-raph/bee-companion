@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+    <!-- Keep Windows-generated files off a shared Mac source folder when requested. -->
+    <BaseIntermediateOutputPath Condition="'$(BeeBuildRoot)' != ''">$(BeeBuildRoot)/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath Condition="'$(BeeBuildRoot)' != ''">$(BeeBuildRoot)/$(MSBuildProjectName)/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

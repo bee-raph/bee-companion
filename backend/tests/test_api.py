@@ -719,3 +719,30 @@ def test_backup_pins_files_and_verifies_archive_after_snapshot(
             == hashlib.sha256(b"database snapshot").hexdigest()
         )
     assert not list(backups.glob("*.partial"))
+
+
+def test_web_and_desktop_sessions_share_changes_and_conflicts(client):
+    desktop = headers(client)
+    web = headers(client)
+    original = mutation(body={"title": "From browser", "status": "To do"})
+    response = client.post('/api/v1/sync/push', headers=web,
+                           json={"mutations": [original]}).json()
+    record = response['results'][0]['record']
+    pulled = client.get('/api/v1/sync/pull', headers=desktop).json()
+    assert pulled['changes'] == [record]
+    edited = {**original, "operationID": str(uuid.uuid4()),
+              "expectedRevision": record['revision'],
+              "body": {"title": "Edited on desktop", "status": "Done", "archived": "true"}}
+    client.post('/api/v1/sync/push', headers=desktop, json={"mutations": [edited]})
+    web_pull = client.get('/api/v1/sync/pull', headers=web,
+                          params={"cursor": pulled['cursor']}).json()
+    assert web_pull['changes'][0]['body']['status'] == 'Done'
+    stale = {**original, "operationID": str(uuid.uuid4()), "expectedRevision": 1}
+    conflict = client.post('/api/v1/sync/push', headers=web,
+                           json={"mutations": [stale]}).json()['results'][0]
+    assert conflict['status'] == 'conflict'
+    assert conflict['server']['body']['title'] == 'Edited on desktop'
+    # A lost browser response can be retried without duplicating the original write.
+    retried = client.post('/api/v1/sync/push', headers=web,
+                          json={"mutations": [original]}).json()
+    assert retried == response

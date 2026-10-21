@@ -42,7 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         .onReceive(
           NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
-        ) { _ in model.checkWorkingCopies() }
+        ) { _ in
+          model.checkWorkingCopies()
+          Task { await model.sync() }
+        }
         .alert(
           "Bee Companion",
           isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })

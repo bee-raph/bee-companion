@@ -10,7 +10,17 @@ Bee Companion is a **native macOS single user utility** that combines work tools
 
 Each deployment has exactly one owner. There is no public registration, collaboration, or shared workspace. Another person needs a separate deployment and configuration file; everyone can use the same application build.
 
+## Windows client
+
+A native C# / WinUI 3 Windows client is under development in [`windows/`](windows/README.md), with a .NET 10 SQLite/sync core that can be tested on macOS. An initial ARM64 build has been compiled and launched in Parallels Windows 11, with 40 core tests passing on both Windows and macOS. Notifications, full feature parity, and signed packaging remain unfinished; this is not yet a released Windows app.
+
+## Web client
+
+A mobile-first browser client is served by the same API service at [http://127.0.0.1:8787/](http://127.0.0.1:8787/). Sign in with the instance owner’s credentials. Web and desktop changes synchronize through the existing backend. Notifications and Shabbat mode belong to the desktop app. See [web client coverage, offline behavior, and current limitations](docs/web-client.md).
+
 ## Features
+
+The features below describe the macOS client. Web and Windows coverage and limitations are documented in their linked guides.
 
 - **Today:** due tasks, reminders, local weather, three world clocks, Hebrew date, zmanim, and a compact stock watchlist. The layout expands with the window. Clocks omit seconds; the zmanim strip advances to the next upcoming time.
 - **Global search:** use the toolbar search field from any page to search the full text of notes, reminder and task descriptions, and CRM identity, contact details, addresses, notes, and activity. Results appear as cards in a grid with the type, title, and a text excerpt. Click a card to open that exact record; CRM activity matches open the owning contact. Archived work is included, deleted records are excluded, and search works offline. Prefixes, text within words, email addresses, and phone-number suffixes are supported. Up to 200 matches are shown; narrow the query when the limit is reached.
@@ -58,7 +68,7 @@ xcodebuild -version
 swift --version
 python3 --version
 docker compose version
-git clone https://github.com/bee-raph/bee-companion.git
+git clone YOUR_REPOSITORY_URL bee-companion
 cd bee-companion
 ```
 
@@ -105,7 +115,7 @@ scripts/companionctl validate
 
 The initializer securely prompts for the owner password and optional London Strategic Edge key. Use a password of at least 12 characters and save it in your password manager. It creates permission-restricted `.runtime/` configuration and secrets, generates an instance UUID and database password, builds the backend image, starts PostgreSQL, applies migrations, creates the owner, and starts API/worker services. Rerunning preserves the instance and its data. Validation should report `{"status":"ready"}`.
 
-The API listens only at `http://127.0.0.1:8787`; the database has no published port. Separate persistent volumes hold database data, file objects, and backups. No Supabase, Redis, object-storage server, mail server, or browser frontend is required.
+The API listens on all host IPv4 interfaces at port 8787 (`http://127.0.0.1:8787` locally; use the backend host address from another device); the database has no published port. Separate persistent volumes hold database data, file objects, and backups. No Supabase, Redis, object-storage server, mail server, or separate frontend server is required.
 
 ### 4. Connect and configure
 
@@ -159,7 +169,7 @@ scripts/companionctl restore --archive /absolute/path/backup.tar.gz
 
 Upgrade backs up, stops writes, migrates, and checks readiness. Migration failure leaves writes disabled for recovery. Restore validates database and objects and revokes sessions. Password reset is a local administrative action and also revokes sessions; there is no email recovery service.
 
-For another owner, create an isolated instance with its own loopback port:
+For another owner, create an isolated instance with its own port:
 
 ```sh
 scripts/companionctl --instance-dir .runtime-second init \
@@ -183,7 +193,7 @@ Checks cover storage/sync, CRM and rich contact notes, task history, record time
 
 There is no login launch or background alarm helper. Closing the last main window quits the app. macOS governs closed-app notifications; a sleeping or powered-off Mac cannot guarantee an on-time popup. The client schedules the earliest 60 occurrences within 30 days. File cache eviction is not implemented. Calendar permissions, notification delivery, sharing apps, screen readability, and installation on another Mac need validation on the target machine. Notarization requires Developer ID credentials.
 
-Deployment secrets, local databases, generated apps/installers, and signing material are ignored by Git. Use HTTPS for any independently configured remote deployment; the packaged deployment is loopback-only. See [icon and identity assets](docs/brand-assets.md).
+Deployment secrets, local databases, generated apps/installers, and signing material are ignored by Git. The packaged deployment publishes the authenticated HTTP API on all host IPv4 interfaces. See [icon and identity assets](docs/brand-assets.md).
 
 ---
 
@@ -243,7 +253,7 @@ xcodebuild -version
 swift --version
 python3 --version
 docker compose version
-git clone https://github.com/bee-raph/bee-companion.git
+git clone YOUR_REPOSITORY_URL bee-companion
 cd bee-companion
 ```
 
@@ -290,7 +300,7 @@ scripts/companionctl validate
 
 האתחול מבקש באופן מאובטח סיסמת בעלים ומפתח London Strategic Edge אופציונלי. השתמשו בסיסמה בת 12 תווים לפחות ושמרו אותה במנהל סיסמאות. הוא יוצר תצורה וסודות בהרשאות מוגבלות תחת `.runtime/`, מייצר UUID למופע וסיסמת מסד, בונה תמונת שרת, מפעיל PostgreSQL, מבצע מיגרציות, יוצר בעלים ומפעיל API ועובד רקע. הפעלה חוזרת שומרת את המופע ונתוניו. האימות אמור להחזיר `{"status":"ready"}`.
 
-ה־API מאזין רק ב־`http://127.0.0.1:8787`; למסד אין פורט מפורסם. Volumes נפרדים שומרים מסד, קבצים וגיבויים. אין צורך ב־Supabase, ‏Redis, שרת אחסון אובייקטים, שרת דואר או ממשק דפדפן.
+ה־API מאזין בכל ממשקי IPv4 בפורט 8787; כתובתו המקומית היא `http://127.0.0.1:8787`, וממכשיר אחר יש להשתמש בכתובת מארח השרת; למסד אין פורט מפורסם. Volumes נפרדים שומרים מסד, קבצים וגיבויים. אין צורך ב־Supabase, ‏Redis, שרת אחסון אובייקטים, שרת דואר או ממשק דפדפן.
 
 ### 4. חיבור והגדרה
 
@@ -368,4 +378,4 @@ python3 scripts/check_secrets.py --staged
 
 אין הפעלה אוטומטית בכניסה או עוזר התראות ברקע. סגירת החלון הראשי האחרון מסיימת את האפליקציה. macOS שולט בהתראות כשהיא סגורה; Mac ישן או כבוי אינו מבטיח חלון במועד. הלקוח מתזמן את 60 המופעים הקרובים בתוך 30 יום. אין פינוי אוטומטי של מטמון הקבצים. יש לבדוק הרשאות לוח, התראות, אפליקציות שיתוף, קריאות המסך והתקנה על Mac אחר במכשיר היעד. Notarization דורש אישורי Developer ID.
 
-Git מתעלם מסודות פריסה, מסדים מקומיים, אפליקציות ומתקינים שנוצרו וחומרי חתימה. לפריסה מרוחקת עצמאית השתמשו ב־HTTPS; הפריסה המסופקת מקומית בלבד. ראו [נכסי הסמל והזהות](docs/brand-assets.md).
+Git מתעלם מסודות פריסה, מסדים מקומיים, אפליקציות ומתקינים שנוצרו וחומרי חתימה. הפריסה המסופקת מפרסמת את ה־API עם הזדהות ב־HTTP בכל ממשקי IPv4. ראו [נכסי הסמל והזהות](docs/brand-assets.md).

@@ -1,0 +1,14 @@
+<Application x:Class="BeeCompanion.Windows.App"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Application.Resources><ResourceDictionary>
+            <Color x:Key="SystemAccentColor">#645ECC</Color>
+            <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#645ECC" />
+            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#645ECC" />
+            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#756FD5" />
+            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#857FE0" />
+            <x:Double x:Key="ContentDialogMaxWidth">680</x:Double>
+            <CornerRadius x:Key="OverlayCornerRadius">16</CornerRadius><ResourceDictionary.MergedDictionaries>
+  <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+ </ResourceDictionary.MergedDictionaries></ResourceDictionary></Application.Resources>
+</Application>

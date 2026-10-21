@@ -24,3 +24,12 @@ secrets/
 *.db
 *.db-*
 *.log
+
+# Native Windows build outputs and IDE state.
+windows/**/bin/
+windows/**/obj/
+windows/.vs/
+windows/dist/
+*.user
+*.suo
+windows/Configuration/*.companion-instance.json

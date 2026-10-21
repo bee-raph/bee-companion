@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Companion.Core/Companion.Core.csproj" />
+  <Project Path="Companion.Core.Tests/Companion.Core.Tests.csproj" />
+  <Project Path="Companion.Windows/Companion.Windows.csproj" />
+</Solution>

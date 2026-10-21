@@ -567,3 +567,25 @@ def local_weather(latitude: float, longitude: float, timezone: str = "Asia/Jerus
     from .reader import weather
 
     return weather(latitude, longitude, timezone)
+
+# Browser client is packaged with the API; API and documentation routes keep priority.
+from fastapi.staticfiles import StaticFiles
+
+web_root = Path(__file__).parent / "web"
+app.mount("/web", StaticFiles(directory=web_root), name="web")
+
+
+@app.get("/", include_in_schema=False)
+def web_client():
+    return FileResponse(web_root / "index.html", headers={
+        "Cache-Control": "no-cache",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
+@app.get("/sw.js", include_in_schema=False)
+def web_service_worker():
+    return FileResponse(web_root / "sw.js", media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
