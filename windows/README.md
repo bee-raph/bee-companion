@@ -1,5 +1,7 @@
 # Bee Companion for Windows
 
+**Work in progress — for development and testing only. macOS is currently the only reliable version for everyday use. Use the macOS app for now.**
+
 Native Windows client under development: **C# / .NET 10 / WinUI 3 / Windows App SDK**, with a separately testable SQLite and HTTP core. It uses the existing Python API without a web view.
 
 ## Current implementation

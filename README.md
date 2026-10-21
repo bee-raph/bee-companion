@@ -6,13 +6,15 @@
 
 ## English
 
+**macOS is currently the only reliable version for everyday use. The Windows client is a work in progress, intended for development and testing only.**
+
 Bee Companion is a **native macOS single user utility** that combines work tools, a local agenda, and an on-demand Shabbat display. SwiftUI and AppKit provide the interface. A Docker Compose backend stores work, settings, and files; local SQLite storage supports offline editing.
 
 Each deployment has exactly one owner. There is no public registration, collaboration, or shared workspace. Another person needs a separate deployment and configuration file; everyone can use the same application build.
 
 ## Windows client
 
-A native C# / WinUI 3 Windows client is under development in [`windows/`](windows/README.md), with a .NET 10 SQLite/sync core that can be tested on macOS. An initial ARM64 build has been compiled and launched in Parallels Windows 11, with 40 core tests passing on both Windows and macOS. Notifications, full feature parity, and signed packaging remain unfinished; this is not yet a released Windows app.
+The native C# / WinUI 3 Windows client in [`windows/`](windows/README.md) is **a work in progress for development and testing only**. It is incomplete and should not be relied on for everyday use. Use the macOS version for now.
 
 ## Web client
 
@@ -200,6 +202,8 @@ Deployment secrets, local databases, generated apps/installers, and signing mate
 <a id="hebrew"></a>
 
 ## עברית
+
+**גרסת macOS היא כרגע הגרסה האמינה היחידה לשימוש יומיומי. גרסת Windows עדיין בפיתוח ומיועדת לפיתוח ולבדיקות בלבד.**
 
 Bee Companion הוא **כלי עזר מקורי ל־macOS למשתמש יחיד**, המשלב כלי עבודה, סדר יום מקומי ותצוגת שבת לפי דרישה. הממשק משתמש ב־SwiftUI וב־AppKit. שרת Docker Compose שומר עבודה, הגדרות וקבצים, ומסד SQLite מקומי מאפשר עריכה ללא חיבור.
 
